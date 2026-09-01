@@ -163,6 +163,47 @@ rien reconstruire :
 
 ---
 
+## Consulter les logs d'execution
+
+Au-dela du resultat visible dans la base Notion, chaque script a sa propre
+trace technique.
+
+### Gmail (GitHub Actions)
+
+- Interface web : [Actions du repo](https://github.com/aagwali/email-to-notion/actions)
+  — ouvrir le run du jour, chaque step est depliable avec ses logs complets.
+- En CLI :
+  ```
+  gh run list --repo aagwali/email-to-notion --limit 5
+  gh run view <run-id> --repo aagwali/email-to-notion --log
+  ```
+- Deux runs apparaissent chaque nuit (01:00 et 02:00 UTC, a cause des deux
+  crons DST, voir plus haut). Un seul importe reellement les emails ;
+  l'autre s'arrete des le step "Gate on Paris local time" avec `run=false`
+  — c'est attendu, pas un echec.
+
+### Outlook (LaunchAgent)
+
+- Fichier de log (stdout + stderr combines) :
+  ```
+  cat logs/outlook.log
+  ```
+  Contient soit `Aucun fichier a traiter.`, soit le detail des imports
+  (`- fichier.txt` / `ok -> Notion + archive`), soit un message d'echec.
+- Code de sortie du dernier run (0 = OK) :
+  ```
+  launchctl list | grep email-to-notion
+  ```
+- Si `logs/outlook.log` est vide ou absent, c'est le signe que launchd n'a
+  meme pas declenche le job (ex : machine en veille toute la nuit). Le
+  detail se trouve alors dans les logs systeme :
+  ```
+  log show --predicate 'process == "launchd"' --last 12h | grep email-to-notion-outlook
+  ```
+  ou via Console.app en filtrant sur `email-to-notion-outlook`.
+
+---
+
 ## Depannage
 
 - **`Variables d'environnement manquantes`** (Gmail) : verifier `.env` —
