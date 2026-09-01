@@ -1,0 +1,16 @@
+{
+  "name": "emails-to-notion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx email-to-notion-input-outlook.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}

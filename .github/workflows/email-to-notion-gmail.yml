@@ -1,0 +1,46 @@
+name: Email to Notion (Gmail)
+
+on:
+  schedule:
+    # 03:00 Europe/Paris -> 01:00 UTC en ete (CEST), 02:00 UTC en hiver (CET).
+    # Les deux crons tournent chaque jour ; le step "gate" ne laisse passer
+    # que celui qui tombe reellement sur 3h heure de Paris.
+    - cron: "0 1 * * *"
+    - cron: "0 2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate on Paris local time
+        id: gate
+        run: |
+          hour=$(TZ=Europe/Paris date +%H)
+          if [ "$hour" = "03" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Hors creneau (heure Paris actuelle : ${hour}h) - run ignore"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: npm ci
+
+      - name: Import Gmail -> Notion
+        if: steps.gate.outputs.run == 'true'
+        run: npx tsx email-to-notion-input-gmail.ts
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
