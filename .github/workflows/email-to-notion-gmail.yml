@@ -17,7 +17,7 @@ jobs:
         id: gate
         run: |
           hour=$(TZ=Europe/Paris date +%H)
-          if [ "$hour" = "03" ]; then
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$hour" = "03" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "Hors creneau (heure Paris actuelle : ${hour}h) - run ignore"
