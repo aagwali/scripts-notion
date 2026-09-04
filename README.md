@@ -67,11 +67,13 @@ Fichier : [`email-to-notion-input-gmail.ts`](email-to-notion-input-gmail.ts)
 
 Workflow : [`.github/workflows/email-to-notion-gmail.yml`](.github/workflows/email-to-notion-gmail.yml)
 
-- Declenchement quotidien a 3h heure de Paris. GitHub Actions ne connait
-  que l'UTC, donc le workflow tourne sur deux crons (`01:00` et `02:00`
-  UTC) et un step "gate" ne laisse passer que celui qui correspond
-  reellement a 3h heure de Paris — ca gere le changement heure ete/hiver
-  sans intervention.
+- Declenchement quotidien a `20:00` UTC (soit 22h heure de Paris en ete,
+  21h en hiver). GitHub Actions ne connait que l'UTC : pas d'ajustement
+  automatique au changement d'heure, a corriger manuellement dans le
+  cron si besoin.
+  > A noter : les runs planifies GitHub Actions peuvent etre retardes de
+  > plusieurs heures en cas de forte charge sur l'infra GitHub — ce n'est
+  > pas garanti a l'heure pile.
 - Secrets requis sur le repo (`Settings > Secrets and variables >
   Actions`) : `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   `GOOGLE_REFRESH_TOKEN`.
@@ -83,7 +85,7 @@ Workflow : [`.github/workflows/email-to-notion-gmail.yml`](.github/workflows/ema
   ```
 - Le cron GitHub Actions ne se declenche que sur la **branche par
   defaut** (`main`) — pusher ailleurs ne suffit pas.
-- Declenchement manuel pour tester (ignore le gate horaire) :
+- Declenchement manuel pour tester :
   ```
   gh workflow run "Email to Notion (Gmail)" --repo aagwali/email-to-notion
   gh run list --repo aagwali/email-to-notion --limit 1
@@ -177,10 +179,9 @@ trace technique.
   gh run list --repo aagwali/email-to-notion --limit 5
   gh run view <run-id> --repo aagwali/email-to-notion --log
   ```
-- Deux runs apparaissent chaque nuit (01:00 et 02:00 UTC, a cause des deux
-  crons DST, voir plus haut). Un seul importe reellement les emails ;
-  l'autre s'arrete des le step "Gate on Paris local time" avec `run=false`
-  — c'est attendu, pas un echec.
+- Un seul run attendu chaque nuit, autour de `20:00` UTC — mais l'heure
+  reelle de declenchement peut varier (voir remarque sur les delais plus
+  haut).
 
 ### Outlook (LaunchAgent)
 
