@@ -19,6 +19,7 @@
  *
  *   Quotidien   : traite tous les jours
  *   Hebdo       : traite uniquement les jours coches dans Weekday
+ *   Mensuel     : traite uniquement le jour du mois indique par Monthday
  *   Sur demande : jamais traite (declenche a la main)
  *   En pause    : jamais traite, gele en l'etat
  *   Externe     : jamais traite, un autre processus en est proprietaire
@@ -68,6 +69,7 @@ const TIMEZONE = "Europe/Paris";
 
 const RECURRENCE_PROP = "Recurrence";
 const WEEKDAY_PROP = "Weekday";
+const MONTHDAY_PROP = "Monthday";
 const DONE_PROP = "Done";
 const SERIES_PROP = "Series";
 const DATE_PROP = "Date";
@@ -87,7 +89,7 @@ const DATE_PROP = "Date";
 const EXCLUDED_RECURRENCES = ["Sur demande", "En pause", "Externe"];
 
 /** Valeurs que ce script sait planifier ; toute autre est une erreur de saisie. */
-const SCHEDULED_RECURRENCES = ["Quotidien", "Hebdo"];
+const SCHEDULED_RECURRENCES = ["Quotidien", "Hebdo", "Mensuel"];
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
@@ -224,25 +226,51 @@ export function weekdayOf(day: string): string {
   return WEEKDAYS[parseDay(day).getUTCDay()];
 }
 
-function isScheduledOn(day: string, recurrence: string, weekdays: string[]): boolean {
-  if (recurrence === "Quotidien") return true;
-  if (recurrence === "Hebdo") return weekdays.includes(weekdayOf(day));
+/** Nombre de jours du mois auquel `day` appartient. */
+function daysInMonthOf(day: string): number {
+  const d = parseDay(day);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+}
+
+/**
+ * Un Monthday au-dela de la fin du mois est ramene au dernier jour : un
+ * evenement cale sur le 31 tombe le 28 en fevrier plutot que de sauter le
+ * mois. Choisi parce qu'un rappel mensuel doit passer douze fois par an --
+ * sauter fevrier serait un trou silencieux, et le gel de Series qui suit
+ * ferait croire a une panne.
+ */
+export function isMonthdayOn(day: string, monthday: number): boolean {
+  return parseDay(day).getUTCDate() === Math.min(monthday, daysInMonthOf(day));
+}
+
+/** Ce qui suffit a dire si un jour est programme. Sous-ensemble d'EventState. */
+export interface Schedule {
+  recurrence: string;
+  weekdays: string[];
+  monthday: number | null;
+}
+
+function isScheduledOn(day: string, schedule: Schedule): boolean {
+  if (schedule.recurrence === "Quotidien") return true;
+  if (schedule.recurrence === "Hebdo") return schedule.weekdays.includes(weekdayOf(day));
+  if (schedule.recurrence === "Mensuel") {
+    return schedule.monthday !== null && isMonthdayOn(day, schedule.monthday);
+  }
   return false;
 }
 
 /**
  * Occurrence programmee juste avant `day`. C'est elle que le Done lu est
  * cense decrire ; toute autre valeur de Date signale un run manque.
- * Remonte au plus 7 jours : au-dela, aucun Weekday ne peut correspondre.
+ *
+ * Remonte au plus 31 jours : c'est le pire ecart entre deux occurrences
+ * mensuelles (un 31 janvier suivi d'un 28 fevrier ramene). Un Hebdo trouve
+ * de toute facon dans les 7 premiers jours.
  */
-export function previousOccurrence(
-  day: string,
-  recurrence: string,
-  weekdays: string[],
-): string | null {
-  for (let back = 1; back <= 7; back++) {
+export function previousOccurrence(day: string, schedule: Schedule): string | null {
+  for (let back = 1; back <= 31; back++) {
     const candidate = addDays(day, -back);
-    if (isScheduledOn(candidate, recurrence, weekdays)) return candidate;
+    if (isScheduledOn(candidate, schedule)) return candidate;
   }
   return null;
 }
@@ -262,6 +290,7 @@ export interface Decision {
 export interface EventState {
   recurrence: string | null;
   weekdays: string[];
+  monthday: number | null;
   done: boolean;
   series: number | null;
   /** Jour du dernier reset, c'est-a-dire l'occurrence que `done` decrit. */
@@ -272,6 +301,7 @@ export function readState(page: NotionPage): EventState {
   return {
     recurrence: selectNameOf(page, RECURRENCE_PROP),
     weekdays: multiSelectNamesOf(page, WEEKDAY_PROP),
+    monthday: numberOf(page, MONTHDAY_PROP),
     done: checkboxOf(page, DONE_PROP),
     series: numberOf(page, SERIES_PROP),
     previousDay: dayOf(page, DATE_PROP),
@@ -279,7 +309,7 @@ export function readState(page: NotionPage): EventState {
 }
 
 export function decide(state: EventState, day: string): Decision {
-  const { recurrence, weekdays, series, done, previousDay } = state;
+  const { recurrence, weekdays, monthday, series, done, previousDay } = state;
 
   if (recurrence === null) {
     return { outcome: "invalid", series: null, reason: `${RECURRENCE_PROP} vide` };
@@ -293,12 +323,30 @@ export function decide(state: EventState, day: string): Decision {
   if (recurrence === "Hebdo" && weekdays.length === 0) {
     return { outcome: "invalid", series: null, reason: `Hebdo sans ${WEEKDAY_PROP}` };
   }
-  if (!isScheduledOn(day, recurrence, weekdays)) {
+  if (recurrence === "Mensuel" && monthday === null) {
+    return { outcome: "invalid", series: null, reason: `Mensuel sans ${MONTHDAY_PROP}` };
+  }
+  if (
+    recurrence === "Mensuel" &&
+    (!Number.isInteger(monthday) || monthday! < 1 || monthday! > 31)
+  ) {
+    // Sans ce garde-fou un 0 ou un 32 ne tomberait jamais : l'evenement
+    // disparaitrait de la vue sans que rien ne le signale.
     return {
-      outcome: "skipped",
+      outcome: "invalid",
       series: null,
-      reason: `pas programme un ${weekdayOf(day)} (${weekdays.join(", ")})`,
+      reason: `${MONTHDAY_PROP} hors de 1-31 (${monthday})`,
     };
+  }
+
+  const schedule: Schedule = { recurrence, weekdays, monthday };
+
+  if (!isScheduledOn(day, schedule)) {
+    const rythme =
+      recurrence === "Mensuel"
+        ? `le ${monthday} du mois`
+        : `un ${weekdayOf(day)} (${weekdays.join(", ")})`;
+    return { outcome: "skipped", series: null, reason: `pas programme ${rythme}` };
   }
 
   if (previousDay === day) {
@@ -313,7 +361,7 @@ export function decide(state: EventState, day: string): Decision {
     return { outcome: "initialised", series: 0, reason: `${DATE_PROP} vide` };
   }
 
-  const expected = previousOccurrence(day, recurrence, weekdays);
+  const expected = previousOccurrence(day, schedule);
 
   if (previousDay !== expected) {
     // Ni +1 ni remise a zero : le Done lu decrit une occurrence deja

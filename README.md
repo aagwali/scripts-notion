@@ -13,9 +13,13 @@ ici).
 emails, sortent les phases terminees de la base "Phases" et remettent a
 zero chaque nuit la base "Recurring events".
 
-**Projection vers Google Calendar.** Un dernier script reporte les dates
+**Projection vers Google Calendar.** Un script reporte les dates
 `Deadline` et `Reminder` de la base "Tasks" dans deux calendriers Google
 dedies, et retire de l'agenda ce qui a disparu de Notion.
+
+**Planning d'Aline.** Un dernier script projette vers Google Calendar les
+jours travailles de la base "Planning Aline", elle-meme alimentee par une
+tache Claude qui lit la photo d'un tableau blanc.
 
 ## Arborescence
 
@@ -27,12 +31,16 @@ scripts/
   reset-recurring-events.ts       # reset base Recurring events (GitHub Actions, quotidien)
   reset-recurring-events.test.ts  # tests de la logique de serie, sans appel Notion
   sync-tasks-calendar.ts          # Tasks -> Google Calendar (GitHub Actions, quotidien)
+  sync-planning-aline.ts          # Planning Aline -> Google Calendar (a la demande)
   google-auth.ts       # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
+.claude/skills/
+  planning-aline/SKILL.md         # la tache Claude qui lit la photo du tableau
 .github/workflows/
   import-gmail.yml
   archive-phases.yml
   reset-recurring-events.yml
   sync-tasks-calendar.yml
+  sync-planning-aline.yml         # workflow_dispatch uniquement, pas de cron
 ```
 
 ## Planification
@@ -57,6 +65,10 @@ peuvent etre retardes de plusieurs minutes a plusieurs heures selon la
 charge de l'infra : l'etalement ecrit dans les crons n'est pas celui qui
 est obtenu, et aucun script ne depend de l'heure de passage d'un autre.
 
+`sync-planning-aline` echappe au tableau : aucun cron, il est declenche a
+la main (ou par la skill) quand une nouvelle photo du tableau blanc
+arrive (voir §6).
+
 Les tests (`npm test`) ne couvrent que `reset-recurring-events` : c'est le
 seul script dont le comportement depend d'un arbitrage de dates invisible
 a la relecture.
@@ -64,7 +76,8 @@ a la relecture.
 Tous les scripts lisent `.env` **relativement au repertoire courant** :
 les lancer depuis la racine du repo, jamais depuis `scripts/`. Les
 raccourcis `npm run` (`import:gmail`, `import:outlook`, `archive-phases`,
-`google-auth`, `sync-tasks-calendar`) s'en chargent.
+`google-auth`, `sync-tasks-calendar`, `sync-planning-aline`) s'en
+chargent.
 
 ## Prerequis communs
 
@@ -74,7 +87,8 @@ raccourcis `npm run` (`import:gmail`, `import:outlook`, `archive-phases`,
   (`NOTION_DATABASE_ID` est code en dur dans les deux scripts d'ingestion :
   `ba36c9eb-2587-49e0-abd3-0d47276511c0`), et aux bases "Phases", "Tasks",
   "Docs", "Projects", "Sponsors" et "Phases archivees" pour le script
-  d'archivage, et a la base "Recurring events" pour le script de reset
+  d'archivage, a la base "Recurring events" pour le script de reset, et a
+  la base "Planning Aline" pour le script de planning
 - Un seul client OAuth Google pour Gmail et Calendar : `google-auth.ts`
   demande les deux scopes en une fois
 
@@ -409,12 +423,21 @@ comme le reste du schema ; les valeurs sont en francais, comme celles de
 
 | Propriete | Type | Role |
 |---|---|---|
-| `Recurrence` | select | `Quotidien`, `Hebdo`, `Sur demande`, `En pause`, `Externe` |
+| `Recurrence` | select | `Quotidien`, `Hebdo`, `Mensuel`, `Sur demande`, `En pause`, `Externe` |
 | `Weekday` | multi-select | `Lun` ... `Dim`, lu uniquement si `Recurrence = Hebdo` |
+| `Monthday` | number | Jour du mois 1-31, lu uniquement si `Recurrence = Mensuel` |
 
 - `Quotidien` : traite tous les jours.
 - `Hebdo` : traite uniquement les jours coches dans `Weekday`. Plusieurs
   jours sont permis (`Lun` + `Jeu` = deux fois par semaine).
+- `Mensuel` : traite uniquement le jour du mois porte par `Monthday`. Un
+  `Monthday` au-dela de la fin du mois est **ramene au dernier jour** : un
+  evenement cale sur le 31 passe le 28 en fevrier. Le choix est
+  delibere — un rappel mensuel doit passer douze fois par an, et sauter
+  fevrier creerait un trou silencieux que le gel de `Series` ferait
+  ensuite passer pour une panne. Un `Monthday` vide, non entier ou hors de
+  1-31 sort en erreur : sans ce garde-fou, l'evenement disparaitrait de la
+  vue sans que rien ne le signale.
 - `Sur demande` : jamais traite. C'est le cas de "Revue de code",
   declenchee a la main.
 - `En pause` : jamais traite, gele en l'etat. C'est le cas de "Rubix
@@ -445,6 +468,11 @@ lit se rapporte.
 | plus ancienne | Un run de minuit a saute : `Series` **gelee** |
 | vide | Premiere prise en charge : `Series = 0` |
 | dans le futur | Signalee, jamais ecrasee |
+
+La recherche de l'occurrence attendue remonte jusqu'a **31 jours** : c'est
+le pire ecart entre deux occurrences mensuelles (un 31 janvier suivi d'un
+28 fevrier ramene). Un `Hebdo` la trouve de toute facon dans les 7
+premiers jours.
 
 Le gel merite un mot. Si le run du jeudi ne part pas, la journee du jeudi
 n'est jamais affichee dans la vue (`Date` est restee a mercredi) : elle
@@ -584,6 +612,129 @@ gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/scripts-notion --body "..."
 
 Les ids des deux calendriers sont codes en dur dans le script, comme les
 ids de bases Notion — ce ne sont pas des secrets.
+
+---
+
+## 6. Planning d'Aline -> Google Calendar
+
+Fichier : [`scripts/sync-planning-aline.ts`](scripts/sync-planning-aline.ts)
+Tache Claude : [`.claude/skills/planning-aline/SKILL.md`](.claude/skills/planning-aline/SKILL.md)
+Base concernee : "Planning Aline" (`8042d9c1-3ea1-481d-a64e-b48d9a138f19`)
+
+Seul flux du repo lance a la demande, sans aucun cron.
+
+### Le besoin
+
+Aline travaille une quinzaine de jours par mois, en deux horaires : `H1`
+(6h30-18h30) et `H2` (7h30-19h30). Son planning n'existe que sous une
+seule forme, un tableau blanc mensuel a la maison, rempli au feutre. Les
+jours ou elle travaille, les trajets scolaires me reviennent : ces
+jours-la le teletravail est obligatoire, et cette contrainte doit etre
+visible dans mon agenda au moment ou je pose mes rendez-vous.
+
+### La chaine
+
+```
+photo -> [skill Claude] -> Notion -> [gh workflow run] -> Actions -> Google Calendar
+```
+
+La lecture de la photo revient a Claude : reconnaitre du `H1` manuscrit
+et deduire le mois d'une grille qui ne le nomme pas ne se scripte pas
+raisonnablement. Claude ecrit une ligne par jour dans la base, puis
+declenche le workflow.
+
+L'ecriture dans l'agenda revient au script, pour deux raisons. La photo
+se lit souvent depuis un telephone, ou aucun `.env` n'est disponible :
+les credentials Google sont dans les secrets du repo, donc le sync doit
+tourner sur un runner. Et surtout, Claude sans etat qui appellerait
+l'API Calendar dupliquerait les evenements a la seconde passe. Le script
+n'achete pas l'insertion, il achete l'idempotence.
+
+Le declenchement passe par `workflow_dispatch`, pas par un cron pousse
+sur `main` : un cron GitHub peut etre retarde de plusieurs heures (voir
+la section Planification), et n'est de toute facon pas one-shot.
+
+### Deux destinations
+
+| | Jours travailles | Rendez-vous |
+|---|---|---|
+| Ligne Notion | `Type = Travail` | `Type = RDV` |
+| Calendrier | `Planning Aline` (dedie) | `adrienagwali@gmail.com` (perso) |
+| Titre | `H1 · 6h30-18h30` | le libelle lu sur le tableau |
+| Forme | journee entiere | journee entiere, ou horaire si la date Notion porte une heure |
+
+Les horaires ne sont **pas** dans Notion : ils sont codes en dur dans
+`SHIFTS`. Le tableau ne porte que les codes, et une base qui repeterait
+"6h30-18h30" sur treize lignes finirait par se contredire.
+
+### Idempotence : le tag, et le sens unique
+
+Le calendrier personnel est tenu a la main : y reconcilier une fenetre de
+dates effacerait des saisies manuelles. Chaque evenement ecrit par le
+script porte donc un tag dans `extendedProperties.private`, sur lequel
+`events.list` sait filtrer. Le script devient proprietaire d'une fenetre
+*virtuelle* a l'interieur du calendrier, ou tout ce qui a ete saisi a la
+main est litteralement invisible a la requete.
+
+Le meme mecanisme est applique au calendrier dedie, ou il ne serait pas
+necessaire. C'est delibere : le planning est importe une fois par mois
+puis retouche **directement dans Google Calendar**, jamais dans Notion.
+Une reconciliation par fenetre ecraserait ces retouches au premier
+re-run venu — relance d'un run echoue, double declenchement du workflow.
+
+D'ou le regime par defaut, identique des deux cotes : **sens unique**. Le
+tag sert uniquement a ne pas creer deux fois. Un evenement deja pose
+n'est ni modifie ni supprime, quoi qu'en dise Notion. Relancer le
+workflow sur un mois deja importe ne produit donc rien — ni doublon, ni
+correction.
+
+L'inverse reste accessible par `--reconcile` (input `reconcile` du
+workflow) : les evenements tagues sont alignes sur Notion et ceux dont la
+ligne a disparu sont supprimes. Il sert a rattraper une photo mal lue —
+on corrige la base, on relance en reconciliation. C'est un geste
+explicite parce qu'il detruit les retouches manuelles.
+
+La requete des evenements tagues n'a volontairement aucune borne de date :
+elle filtre sur le seul tag de mois. Un evenement deplace a la main hors
+du mois reste retrouve, et n'est donc pas recree en double.
+
+### Le calendrier dedie
+
+`Planning Aline`
+(`affbc5703ccd88c8fd08e946acf97e75cd87896faea2411eda2c7f31c8971b4e`) est
+cree **a la main** dans l'UI Google Calendar. Le scope `calendar.events`
+du refresh token partage permet d'ecrire des evenements, pas de creer un
+calendrier ; elargir ce scope en permanence pour une creation unique ne
+se justifie pas. Son id est code en dur, comme les autres ids de
+calendriers du repo — ce ne sont pas des secrets.
+
+### Lancement
+
+Depuis n'importe ou, via le workflow :
+
+```
+gh workflow run "Sync Planning Aline -> Google Calendar" \
+  --repo aagwali/scripts-notion -f month=2026-09
+gh workflow run "Sync Planning Aline -> Google Calendar" \
+  --repo aagwali/scripts-notion -f month=2026-09 -f dry_run=true
+gh workflow run "Sync Planning Aline -> Google Calendar" \
+  --repo aagwali/scripts-notion -f month=2026-09 -f reconcile=true
+```
+
+En local, si le `.env` est disponible :
+
+```
+npx tsx scripts/sync-planning-aline.ts --dry-run              # mois courant, simulation
+npx tsx scripts/sync-planning-aline.ts --month 2026-09
+npx tsx scripts/sync-planning-aline.ts --month 2026-09 --reconcile
+```
+
+Sans `--month` / `month`, le mois courant est calcule dans
+`Europe/Paris` — pas dans le fuseau du runner, qui se tromperait de mois
+le 1er a minuit.
+
+Le `workflow_dispatch` n'apparait dans `gh` qu'une fois le fichier de
+workflow present sur `main`.
 
 ---
 

@@ -9,6 +9,7 @@
     "reset-recurring-events": "tsx scripts/reset-recurring-events.ts",
     "google-auth": "tsx scripts/google-auth.ts",
     "sync-tasks-calendar": "tsx scripts/sync-tasks-calendar.ts",
+    "sync-planning-aline": "tsx scripts/sync-planning-aline.ts",
     "test": "tsx scripts/reset-recurring-events.test.ts"
   },
   "devDependencies": {

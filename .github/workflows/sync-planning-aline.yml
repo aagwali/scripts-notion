@@ -1,0 +1,57 @@
+name: Sync Planning Aline -> Google Calendar
+
+# Aucun cron : le planning change une fois par mois, quand le tableau
+# blanc est rephotographie. La skill planning-aline ecrit dans Notion puis
+# declenche ce workflow, ce qui evite d'avoir a disposer des credentials
+# Google la ou la photo est lue.
+on:
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Mois a synchroniser (YYYY-MM). Vide = mois courant a Paris."
+        required: false
+        type: string
+      reconcile:
+        description: "Notion reprend la main : aligne et supprime les evenements tagues. Ecrase les retouches faites dans l'agenda."
+        required: false
+        type: boolean
+        default: false
+      dry_run:
+        description: "Simulation : affiche le diff sans rien ecrire."
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Planning Aline -> Google Calendar
+        run: |
+          npx tsx scripts/sync-planning-aline.ts \
+            ${MONTH:+--month "$MONTH"} \
+            ${RECONCILE:+--reconcile} \
+            ${DRY_RUN:+--dry-run}
+        env:
+          # Un drapeau non demande doit arriver ici en chaine VIDE : c'est
+          # la seule valeur que `${VAR:+...}` traite comme absente. La
+          # comparaison est doublee (booleen et chaine) parce qu'un input
+          # passe par `gh -f reconcile=false` peut arriver en chaine, et
+          # que toute chaine non vide -- "false" comprise -- est vraie dans
+          # une expression GitHub.
+          MONTH: ${{ inputs.month }}
+          RECONCILE: ${{ (inputs.reconcile == true || inputs.reconcile == 'true') && '1' || '' }}
+          DRY_RUN: ${{ (inputs.dry_run == true || inputs.dry_run == 'true') && '1' || '' }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
