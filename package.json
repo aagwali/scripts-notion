@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx email-to-notion-input-outlook.ts"
+    "start": "tsx email-to-notion-input-outlook.ts",
+    "archive-phases": "tsx archive-phases.ts"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",

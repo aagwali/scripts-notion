@@ -1,0 +1,26 @@
+name: Archive Phases (Notion)
+
+on:
+  schedule:
+    # Tous les lundis a 04:00 UTC (06:00 Europe/Paris en ete, 05:00 en hiver).
+    # A ajuster manuellement au changement d'heure si besoin.
+    - cron: "0 4 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Archive phases terminees
+        run: npx tsx archive-phases.ts
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}

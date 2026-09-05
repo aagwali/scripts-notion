@@ -5,12 +5,18 @@ deux sources differentes : Gmail (API) et Outlook Pro (export local via
 Power Automate / OneDrive). Chaque page Notion cree porte `Status: "To
 process"`, consomme ensuite par une tache aval (non incluse ici).
 
+Un troisieme script, sans rapport avec les emails, entretient la base
+"Phases" du meme espace Notion : il en sort les phases terminees.
+
 ## Prerequis communs
 
 - Node >= 18 (fetch natif)
 - `npm install`
 - Une integration Notion avec acces a la base "Raw emails"
-  (`NOTION_DATABASE_ID` est code en dur dans les deux scripts : `ba36c9eb-2587-49e0-abd3-0d47276511c0`)
+  (`NOTION_DATABASE_ID` est code en dur dans les deux scripts d'ingestion :
+  `ba36c9eb-2587-49e0-abd3-0d47276511c0`), et aux bases "Phases", "Tasks",
+  "Docs", "Projects", "Sponsors" et "Phases archivees" pour le script
+  d'archivage
 
 ## Variables d'environnement
 
@@ -165,6 +171,150 @@ rien reconstruire :
 
 ---
 
+## 3. Archivage des phases terminees
+
+Fichier : [`archive-phases.ts`](archive-phases.ts)
+
+### Le probleme
+
+Le selecteur de la relation `Phase` sur Tasks et Docs liste toute la base
+"Phases" — Notion n'offre aucun filtre sur un selecteur de relation. Au
+bout de quelques dizaines de phases, choisir devient penible. La seule
+facon de reduire la liste est de sortir les phases terminees de la base.
+
+Mais une relation Notion est liee a **une seule** data source : on ne peut
+pas faire pointer `Tasks.Phase` vers une page d'une autre base, ni deplacer
+une page d'une base a une autre. Le lien est donc reporte sur une **seconde
+relation**, `Phase archivée`, pointant vers la base archive.
+
+### La base "Phases archivees"
+
+Deja creee (id `3d28b4b8-8465-819d-808a-f6bdb4978194`), sous la page
+`Databases`. Schema, pour reference et pour pouvoir la recreer :
+
+| Propriete | Type | Origine |
+|---|---|---|
+| `Name` | Title | copie de `Phases.Name` |
+| `Project` | Relation -> Projects, limite 1, sens unique | copie |
+| `Sponsor` | Relation -> Sponsors, limite 1, sens unique | copie |
+| `Start date` | Date | copie |
+| `Target end date` | Date | copie |
+| `Deliverable` | Text | copie |
+| `Status` | Select : `Done`, `Cancelled` | copie |
+| `Priority` | Select : `High`, `Medium`, `Low` | copie |
+| `Tasks` | Relation -> Tasks, **bidirectionnelle**, affichee cote Tasks sous le nom `Phase archivée` | ecrit par le script |
+| `Docs` | Relation -> Docs, **bidirectionnelle**, affichee cote Docs sous le nom `Phase archivée` | ecrit par le script |
+| `Phase source ID` | Text | id de la phase d'origine — cle d'idempotence |
+| `Archived at` | Date | horodatage du run |
+
+Les noms doivent correspondre **exactement**, accent de `Phase archivée`
+compris — ce sont des cles d'API. Sens unique pour `Project`/`Sponsor`
+afin de ne pas ajouter de colonne a ces deux bases.
+
+A noter : la limite "1 page" des relations `Project` / `Sponsor` n'est pas
+exposee par l'API, elle se pose a la main dans l'UI. Sans importance, le
+script n'ecrit jamais plus d'une page.
+
+Les six bases concernees (Phases, Tasks, Docs, Projects, Sponsors, Phases
+archivees) doivent etre partagees avec l'integration Notion, ainsi que la
+page parente `Databases`.
+
+Avant tout run reel, verifier a blanc — aucune ecriture :
+
+```
+npx tsx archive-phases.ts --dry-run
+```
+
+### Fonctionnement
+
+Pour chaque phase dont le `Status` vaut `Done` ou `Cancelled`, dans cet
+ordre strict :
+
+1. **Creer** la page archive (ou reprendre celle d'un run interrompu,
+   retrouvee par `Phase source ID`).
+2. **Reattribuer** chaque Task et chaque Doc liee — requete inverse sur
+   `Phase contains <id>`, pas via `Phases.Tasks` qui plafonne a 25
+   elements. Un seul PATCH par page : `Phase archivée` prend l'archive,
+   `Phase` est videe.
+3. **Verifier** en relisant la page : le nouveau lien est present et
+   l'ancien est vide.
+4. **Corbeille** de la phase d'origine, uniquement si toutes les
+   verifications sont passees.
+
+Une seule reattribution en echec suffit a conserver la phase : le script
+logue l'etat incomplet, la liste des pages concernees et la commande de
+rollback, puis passe a la phase suivante. Le run suivant reprend le
+travail sans rien recreer.
+
+Sortie non nulle si au moins une phase est incomplete ou en echec — le
+run GitHub Actions apparait alors en rouge.
+
+### `Phase source ID` et fenetre de rollback
+
+`Phase source ID` est une propriete **texte**, pas une relation : elle
+contient l'uuid de la phase d'origine sous forme de chaine. Rien ne peut
+donc "casser" dessous quand l'original disparait. Elle a deux roles.
+
+**Idempotence.** Avant toute creation, le script cherche dans la base
+archive une page dont `Phase source ID` vaut l'id de la phase. S'il en
+trouve une, il la reprend au lieu d'en creer une seconde. La comparaison
+est chaine a chaine dans la base archive : le script ne va jamais lire la
+page source, ce garde-fou fonctionne donc meme une fois l'original detruit.
+
+En pratique il n'est sollicite que dans la fenetre entre "archive creee" et
+"phase mise a la corbeille", c'est-a-dire apres un run interrompu — une
+phase en corbeille ne remonte plus dans la requete `Status = Done`. Avec
+une exception, a l'intersection des deux roles : **si une phase est
+restauree depuis la corbeille**, elle redevient `Done` et visible, et c'est
+`Phase source ID` qui evite alors de creer une seconde page archive.
+
+**Tracabilite.** L'id relie une page archive a sa ligne de log et a la page
+en corbeille (`https://app.notion.com/p/<id sans tirets>`). Il distingue
+aussi formellement deux archives homonymes — le cas s'est deja produit avec
+deux phases "Mise en place".
+
+**Duree de vie.** Notion conserve une page en corbeille **30 jours** avant
+suppression definitive. C'est la vraie fenetre de rollback, et elle porte
+sur les phases, pas sur l'identifiant. Passe ce delai il n'y a plus rien a
+restaurer : les deux roles operationnels s'eteignent, l'id ne subsiste que
+comme empreinte de provenance. Rien n'est perdu pour autant, la page
+archive etant une copie complete et non un pointeur. Autant masquer cette
+propriete dans les vues de la base : elle est technique.
+
+### Ce qui n'est pas copie
+
+Le script copie les **proprietes** d'une phase, pas le **corps** de sa page
+— la zone de saisie libre sous les proprietes. Sans consequence dans cet
+usage : les phases servent de point de rattachement, les 14 phases
+existantes au moment de la mise en place n'avaient aucun bloc de contenu.
+
+Si cet usage evolue et que des notes sont saisies dans le corps d'une
+phase, elles partiraient a la corbeille avec l'original et disparaitraient
+a 30 jours. Il faudra alors soit recopier les blocs, soit refuser
+d'archiver une phase dont le corps n'est pas vide.
+
+### Lancement manuel
+
+```
+npx tsx archive-phases.ts --dry-run   # simulation
+npx tsx archive-phases.ts             # pour de vrai
+```
+
+### Planification : GitHub Actions
+
+Workflow : [`.github/workflows/archive-phases.yml`](.github/workflows/archive-phases.yml)
+
+- Declenchement hebdomadaire, le lundi a `04:00` UTC. Meme reserve que
+  pour le workflow Gmail : pas d'ajustement automatique au changement
+  d'heure, et les runs planifies peuvent etre retardes.
+- Seul secret requis : `NOTION_TOKEN` (deja pose pour le workflow Gmail).
+- Declenchement manuel :
+  ```
+  gh workflow run "Archive Phases (Notion)" --repo aagwali/email-to-notion
+  ```
+
+---
+
 ## Consulter les logs d'execution
 
 Au-dela du resultat visible dans la base Notion, chaque script a sa propre
@@ -203,6 +353,25 @@ trace technique.
   ```
   ou via Console.app en filtrant sur `email-to-notion-outlook`.
 
+### Archivage des phases (GitHub Actions)
+
+Meme acces que pour Gmail, workflow `Archive Phases (Notion)`. Le log du
+run est la **trace de rollback** : il contient l'id de chaque phase, l'id
+de la page archive creee et l'id de chaque Task/Doc reattribuee.
+
+```
+gh run list --repo aagwali/email-to-notion --workflow "Archive Phases (Notion)" --limit 5
+gh run view <run-id> --repo aagwali/email-to-notion --log
+```
+
+Les runs GitHub Actions sont conserves 90 jours. Pour un lot important
+(premiere execution, reprise apres incident), lancer plutot le script en
+local et garder la sortie :
+
+```
+npx tsx archive-phases.ts | tee logs/archive-phases-$(date +%F).log
+```
+
 ---
 
 ## Depannage
@@ -221,3 +390,13 @@ trace technique.
 - **Plist invalide (`plutil -lint` echoue)** : les caracteres `&`, `<`,
   `>` doivent etre echappes en XML (`&amp;`, `&lt;`, `&gt;`) dans les
   `ProgramArguments`.
+- **`Notion API 404` sur Phases / Tasks / Docs** : l'integration n'a pas
+  acces a la base. Un 404 Notion signifie "invisible pour ce token", pas
+  "inexistant" — partager la base depuis son menu `...` > `Connexions`.
+- **`Notion API 400 ... is not a property that exists`** (archivage) : un
+  nom de propriete ne correspond pas. Verifier `Phase archivée` (avec
+  l'accent) sur Tasks et Docs, et `Phase source ID` sur la base archive.
+- **Phase restee en place avec `INCOMPLET` dans les logs** : c'est le
+  comportement voulu, jamais de suppression apres une reattribution
+  partielle. Corriger la cause (souvent un acces manquant) et relancer :
+  le run reprend la phase sans recreer sa page archive.
