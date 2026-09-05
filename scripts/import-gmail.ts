@@ -15,7 +15,7 @@
  *
  * Usage :
  *   npm install tsx dotenv
- *   npx tsx gmail-auth.ts        (une seule fois)
+ *   npx tsx scripts/google-auth.ts        (une seule fois)
  *   npx tsx email-to-notion-input-gmail.ts
  *
  * Variables d'environnement (.env) :
@@ -378,7 +378,7 @@ async function main(): Promise<void> {
 
   if (missing.length) {
     console.error(`Variables d'environnement manquantes : ${missing.join(", ")}`);
-    console.error("Pour GOOGLE_REFRESH_TOKEN, lancez d'abord : npx tsx gmail-auth.ts");
+    console.error("Pour GOOGLE_REFRESH_TOKEN, lancez d'abord : npx tsx scripts/google-auth.ts");
     process.exit(1);
   }
 

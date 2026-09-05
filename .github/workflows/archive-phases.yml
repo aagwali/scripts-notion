@@ -2,9 +2,9 @@ name: Archive Phases (Notion)
 
 on:
   schedule:
-    # Tous les lundis a 04:00 UTC (06:00 Europe/Paris en ete, 05:00 en hiver).
+    # Tous les lundis a 02:00 UTC (04:00 Europe/Paris en ete, 03:00 en hiver).
     # A ajuster manuellement au changement d'heure si besoin.
-    - cron: "0 4 * * 1"
+    - cron: "0 2 * * 1"
   workflow_dispatch: {}
 
 jobs:

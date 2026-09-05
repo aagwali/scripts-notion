@@ -13,6 +13,10 @@ ici).
 emails, sortent les phases terminees de la base "Phases" et remettent a
 zero chaque nuit la base "Recurring events".
 
+**Projection vers Google Calendar.** Un dernier script reporte les dates
+`Deadline` et `Reminder` de la base "Tasks" dans deux calendriers Google
+dedies, et retire de l'agenda ce qui a disparu de Notion.
+
 ## Arborescence
 
 ```
@@ -22,12 +26,36 @@ scripts/
   archive-phases.ts    # entretien base Phases  (GitHub Actions, hebdomadaire)
   reset-recurring-events.ts       # reset base Recurring events (GitHub Actions, quotidien)
   reset-recurring-events.test.ts  # tests de la logique de serie, sans appel Notion
-  gmail-auth.ts        # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
+  sync-tasks-calendar.ts          # Tasks -> Google Calendar (GitHub Actions, quotidien)
+  google-auth.ts       # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
 .github/workflows/
   import-gmail.yml
   archive-phases.yml
   reset-recurring-events.yml
+  sync-tasks-calendar.yml
 ```
+
+## Planification
+
+Tout tourne de nuit, dans cet ordre (heures de Paris) :
+
+| Heure | Script | Declencheur | Cron |
+|---|---|---|---|
+| 22h | `import-gmail` | GitHub Actions | `0 20 * * *` UTC |
+| 23h | `import-outlook` | LaunchAgent local | `Hour 23` (heure locale) |
+| minuit | `reset-recurring-events` | GitHub Actions | `0 22` + `0 23 * * *` UTC |
+| 2h | `sync-tasks-calendar` | GitHub Actions | `0 0 * * *` UTC |
+| lundi 4h | `archive-phases` | GitHub Actions | `0 2 * * 1` UTC |
+
+Les heures GitHub Actions sont ecrites en UTC et **ne suivent pas le
+changement d'heure** : celles du tableau valent pour l'ete (CEST), et
+tout glisse d'une heure en hiver. Seul `reset-recurring-events` y echappe,
+avec ses deux crons encadrant minuit (voir §4).
+
+L'ordre a surtout une valeur de lisibilite. Les runs planifies GitHub
+peuvent etre retardes de plusieurs minutes a plusieurs heures selon la
+charge de l'infra : l'etalement ecrit dans les crons n'est pas celui qui
+est obtenu, et aucun script ne depend de l'heure de passage d'un autre.
 
 Les tests (`npm test`) ne couvrent que `reset-recurring-events` : c'est le
 seul script dont le comportement depend d'un arbitrage de dates invisible
@@ -36,7 +64,7 @@ a la relecture.
 Tous les scripts lisent `.env` **relativement au repertoire courant** :
 les lancer depuis la racine du repo, jamais depuis `scripts/`. Les
 raccourcis `npm run` (`import:gmail`, `import:outlook`, `archive-phases`,
-`gmail-auth`) s'en chargent.
+`google-auth`, `sync-tasks-calendar`) s'en chargent.
 
 ## Prerequis communs
 
@@ -47,6 +75,8 @@ raccourcis `npm run` (`import:gmail`, `import:outlook`, `archive-phases`,
   `ba36c9eb-2587-49e0-abd3-0d47276511c0`), et aux bases "Phases", "Tasks",
   "Docs", "Projects", "Sponsors" et "Phases archivees" pour le script
   d'archivage, et a la base "Recurring events" pour le script de reset
+- Un seul client OAuth Google pour Gmail et Calendar : `google-auth.ts`
+  demande les deux scopes en une fois
 
 ## Variables d'environnement
 
@@ -54,10 +84,10 @@ Fichier `.env` local (jamais commite, voir `.gitignore`) :
 
 | Variable | Utilise par | Description |
 |---|---|---|
-| `NOTION_TOKEN` | les deux | Token d'integration Notion (`secret_xxx` ou `ntn_xxx`) |
-| `GOOGLE_CLIENT_ID` | Gmail | Client OAuth Google (type "Desktop app") |
-| `GOOGLE_CLIENT_SECRET` | Gmail | Secret du client OAuth |
-| `GOOGLE_REFRESH_TOKEN` | Gmail | Genere une fois via `scripts/gmail-auth.ts` |
+| `NOTION_TOKEN` | tous | Token d'integration Notion (`secret_xxx` ou `ntn_xxx`) |
+| `GOOGLE_CLIENT_ID` | Gmail, Calendar | Client OAuth Google (type "Desktop app") |
+| `GOOGLE_CLIENT_SECRET` | Gmail, Calendar | Secret du client OAuth |
+| `GOOGLE_REFRESH_TOKEN` | Gmail, Calendar | Genere une fois via `scripts/google-auth.ts`, porte les deux scopes |
 
 ---
 
@@ -87,12 +117,12 @@ Fichier : [`scripts/import-gmail.ts`](scripts/import-gmail.ts)
 2. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`.
 3. Lancer une seule fois :
    ```
-   npx tsx scripts/gmail-auth.ts
+   npx tsx scripts/google-auth.ts
    ```
    Ouvre le navigateur, demande le consentement, ecrit
    `GOOGLE_REFRESH_TOKEN` dans `.env` automatiquement.
    > En mode Testing, ce refresh token expire au bout de 7 jours — relancer
-   > `scripts/gmail-auth.ts` si le script commence a echouer avec une erreur de
+   > `scripts/google-auth.ts` si le script commence a echouer avec une erreur de
    > rafraichissement.
 4. Lancer manuellement pour verifier :
    ```
@@ -170,7 +200,7 @@ GitHub Actions possible — il tourne directement sur la machine via
 launchd.
 
 Plist : `~/Library/LaunchAgents/com.agwali.scripts-notion-outlook.plist`
-— declenche tous les jours a **3h30 heure locale**.
+— declenche tous les jours a **23h00 heure locale**.
 
 ```
 # recharger apres modification du plist
@@ -187,17 +217,23 @@ cat logs/outlook.log
 **A propos de la veille** : un ecran verrouille n'empeche pas le job de
 se lancer (la session reste active). En revanche, fermer le capot met
 *toute la machine* en veille — le job ne se declenche alors qu'au reveil
-suivant, pas a 3h30 pile. Si le Mac reste ouvert et **branche sur
+suivant, pas a 23h pile. Si le Mac reste ouvert et **branche sur
 secteur**, `pmset` est configure ici pour ne jamais dormir automatiquement
 sur secteur, donc le job tourne a l'heure, ecran eteint ou non.
 
-Si ce compromis "best effort" ne convient pas, deux alternatives sans
-rien reconstruire :
-- **Reveil programme** : `sudo pmset repeat wakeorpoweron MTWRFSU
-  03:25:00` (reveille la machine juste avant l'heure du job, meme capot
-  ferme et sur secteur).
-- **Bascule sur 17h** : changer `Hour`/`Minute` dans le plist puis
-  recharger — a cette heure la machine est presque surement deja active.
+L'heure a ete ramenee de 3h30 a 23h justement pour reduire ce risque : a
+23h la machine est souvent encore ouverte, alors qu'a 3h30 le capot est
+generalement ferme et le job ne partait qu'au reveil du lendemain.
+
+Si ce compromis "best effort" ne convient toujours pas, un reveil
+programme regle le cas sans rien reconstruire :
+
+```
+sudo pmset repeat wakeorpoweron MTWRFSU 22:55:00
+```
+
+(reveille la machine juste avant l'heure du job, meme capot ferme et sur
+secteur).
 
 ---
 
@@ -334,7 +370,8 @@ npx tsx scripts/archive-phases.ts             # pour de vrai
 
 Workflow : [`.github/workflows/archive-phases.yml`](.github/workflows/archive-phases.yml)
 
-- Declenchement hebdomadaire, le lundi a `04:00` UTC. Meme reserve que
+- Declenchement hebdomadaire, le lundi a `02:00` UTC (4h a Paris en ete,
+  3h en hiver). Meme reserve que
   pour le workflow Gmail : pas d'ajustement automatique au changement
   d'heure, et les runs planifies peuvent etre retardes.
 - Seul secret requis : `NOTION_TOKEN` (deja pose pour le workflow Gmail).
@@ -454,6 +491,102 @@ runner : un runner GitHub est en UTC et se tromperait d'un jour a minuit.
 
 ---
 
+## 5. Tasks -> Google Calendar
+
+Fichier : [`scripts/sync-tasks-calendar.ts`](scripts/sync-tasks-calendar.ts)
+
+Base concernee : "Tasks" (`3438b4b8-8465-80a6-ac08-d30445212e90`).
+
+### Fonctionnement
+
+Notion reste la source de verite. Chaque tache porte deux dates
+independantes, projetees chacune dans son propre calendrier Google sous
+forme d'evenement **journee entiere**, titre `[Deadline] <nom>` ou
+`[Reminder] <nom>` :
+
+| Date Notion | Propriete portant l'id | Calendrier Google |
+|---|---|---|
+| `Deadline` | `Google Event Id (deadline)` | `Deadlines` |
+| `Reminder` | `Google Event Id (reminder)` | `Reminders` |
+
+L'id de l'evenement est la **seule** cle du lien — aucune recherche par
+titre nulle part. Pour chaque tache et chaque couple (date, id) :
+
+| Etat | Action |
+|---|---|
+| date, pas d'id | creation de l'evenement, puis ecriture de son id |
+| date + id | mise a jour de l'evenement (titre, jour) |
+| pas de date, id | suppression de l'evenement **et** de l'id |
+| ni date ni id | rien |
+
+Deux garde-fous s'ajoutent au tableau. Un evenement supprime a la main
+dans l'agenda alors que la date existe toujours (`404`/`410` au moment du
+PATCH) est **recree**, et son nouvel id reecrit : Notion fait foi. Et si
+la creation reussit mais que l'ecriture de l'id echoue, le run sort en
+erreur en logant l'id — sans ce rattrapage manuel, le run suivant
+creerait un doublon.
+
+### Le perimetre d'un run, et le piege du troisieme cas
+
+Sont retenues les taches modifiees dans les **30 dernieres heures**
+(`Last edited`), fenetre large devant les 24h separant deux runs : un run
+manque est rattrape par le suivant.
+
+S'y ajoute un filtre sur le contenu, et c'est la que se joue la ligne
+"pas de date, id". Filtrer sur `Deadline >= aujourd'hui OU Reminder >=
+aujourd'hui` exclurait mecaniquement la tache dont on vient d'effacer la
+date : plus de date, donc plus de ligne remontee, donc un evenement
+orphelin dans l'agenda pour toujours. Le filtre retient donc **aussi**
+toute tache portant un id d'evenement, quelle que soit sa date.
+
+Ecrire un id modifie la page, qui repasse donc dans la fenetre au run
+suivant. Les mises a jour sont ecrites telles quelles a chaque fois, sans
+comparer avec l'etat de l'evenement : un PATCH Google est idempotent, et
+une lecture prealable couterait un appel de plus pour en economiser un.
+
+### Reprise de l'existant (Make)
+
+Les deux calendriers etaient alimentes par un scenario Make. Ce script
+reprend les evenements en place — il ne connait que leur id, deja stocke
+dans Notion — mais il les **renomme** au passage avec le prefixe
+`[Deadline]` / `[Reminder]`.
+
+Deux precautions :
+
+- **Couper le scenario Make** avant le premier run reel. Deux producteurs
+  sur les memes proprietes se marcheraient dessus.
+- La propriete `Google event Id (reminder)` a ete renommee
+  `Google Event Id (reminder)` (casse alignee sur celle de la deadline).
+  Tout scenario ou formule qui la designe par son ancien nom est a
+  corriger.
+
+### Lancement manuel
+
+```
+npx tsx scripts/sync-tasks-calendar.ts --dry-run   # simulation, aucun appel d'ecriture
+npx tsx scripts/sync-tasks-calendar.ts             # pour de vrai
+```
+
+Le `--dry-run` n'appelle pas Google du tout : il montre le perimetre et
+l'action retenue pour chaque date.
+
+### Scope Calendar
+
+`GOOGLE_REFRESH_TOKEN` porte les scopes accordes au moment de son
+emission : le token genere pour Gmail seul **ne suffit pas**. Relancer
+une fois `npx tsx scripts/google-auth.ts` (qui demande desormais
+`gmail.modify` + `calendar.events`), puis repousser le secret si le
+script est planifie :
+
+```
+gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/scripts-notion --body "..."
+```
+
+Les ids des deux calendriers sont codes en dur dans le script, comme les
+ids de bases Notion — ce ne sont pas des secrets.
+
+---
+
 ## Consulter les logs d'execution
 
 Au-dela du resultat visible dans la base Notion, chaque script a sa propre
@@ -539,7 +672,11 @@ npx tsx scripts/archive-phases.ts | tee logs/archive-phases-$(date +%F).log
   reinstalles ou deplaces, adapter la commande dans le plist.
 - **Rafraichissement Google refuse** : si l'app OAuth est en mode
   Testing, le refresh token expire au bout de 7 jours — relancer
-  `npx tsx scripts/gmail-auth.ts`.
+  `npx tsx scripts/google-auth.ts`.
+- **`Calendar API 403 ... insufficientPermissions`** : le refresh token
+  a ete emis avant l'ajout du scope Calendar. Relancer
+  `npx tsx scripts/google-auth.ts` (verifier aussi que l'API Google
+  Calendar est activee sur le projet Cloud).
 - **Plist invalide (`plutil -lint` echoue)** : les caracteres `&`, `<`,
   `>` doivent etre echappes en XML (`&amp;`, `&lt;`, `&gt;`) dans les
   `ProgramArguments`.

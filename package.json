@@ -7,7 +7,8 @@
     "import:gmail": "tsx scripts/import-gmail.ts",
     "archive-phases": "tsx scripts/archive-phases.ts",
     "reset-recurring-events": "tsx scripts/reset-recurring-events.ts",
-    "gmail-auth": "tsx scripts/gmail-auth.ts",
+    "google-auth": "tsx scripts/google-auth.ts",
+    "sync-tasks-calendar": "tsx scripts/sync-tasks-calendar.ts",
     "test": "tsx scripts/reset-recurring-events.test.ts"
   },
   "devDependencies": {

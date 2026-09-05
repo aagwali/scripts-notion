@@ -1,6 +1,11 @@
 #!/usr/bin/env -S npx tsx
 /**
- * Autorisation OAuth Gmail — a lancer UNE SEULE FOIS.
+ * Autorisation OAuth Google — a lancer UNE SEULE FOIS.
+ *
+ * Un seul refresh token couvre tous les scripts Google du repo : Gmail pour
+ * l'ingestion des emails, Calendar pour la projection des dates de Tasks.
+ * Ajouter un scope ici impose de relancer ce script -- un refresh token porte
+ * les scopes accordes au moment de son emission, il ne s'etend pas tout seul.
  *
  * Flux "loopback" (RFC 8252), le seul supporte par Google pour les scopes
  * Gmail : un serveur HTTP local ephemere recoit le code d'autorisation, qui
@@ -10,7 +15,7 @@
  * scopes Gmail ("Invalid device flow scope").
  *
  * Prerequis (console.cloud.google.com) :
- *   - Gmail API activee
+ *   - Gmail API et Google Calendar API activees
  *   - Client OAuth de type "Desktop app" (obligatoire : c'est le seul type qui
  *     accepte un redirect_uri loopback sur port dynamique)
  *   - En mode Testing : votre compte ajoute comme "Test user"
@@ -18,7 +23,7 @@
  * Usage :
  *   export GOOGLE_CLIENT_ID="xxx.apps.googleusercontent.com"
  *   export GOOGLE_CLIENT_SECRET="xxx"
- *   npx tsx gmail-auth.ts
+ *   npx tsx scripts/google-auth.ts
  *
  * Node >= 18 requis.
  */
@@ -33,8 +38,13 @@ const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 
 // gmail.modify = lecture + pose/retrait de labels + corbeille.
-// N'autorise PAS la suppression definitive.
-const SCOPE = "https://www.googleapis.com/auth/gmail.modify";
+//   N'autorise PAS la suppression definitive.
+// calendar.events = lecture/ecriture/suppression des evenements, sans droit
+//   de creer ou supprimer un calendrier.
+const SCOPE = [
+  "https://www.googleapis.com/auth/gmail.modify",
+  "https://www.googleapis.com/auth/calendar.events",
+].join(" ");
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
