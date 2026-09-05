@@ -823,7 +823,8 @@ npx tsx scripts/archive-phases.ts | tee logs/archive-phases-$(date +%F).log
   reinstalles ou deplaces, adapter la commande dans le plist.
 - **Rafraichissement Google refuse** : si l'app OAuth est en mode
   Testing, le refresh token expire au bout de 7 jours — relancer
-  `npx tsx scripts/google-auth.ts`.
+  `npx tsx scripts/google-auth.ts`. Pour en sortir une bonne fois, voir
+  [`docs/oauth-production.md`](docs/oauth-production.md).
 - **`Calendar API 403 ... insufficientPermissions`** : le refresh token
   a ete emis avant l'ajout du scope Calendar. Relancer
   `npx tsx scripts/google-auth.ts` (verifier aussi que l'API Google
