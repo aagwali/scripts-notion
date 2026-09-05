@@ -6,7 +6,9 @@
     "import:outlook": "tsx scripts/import-outlook.ts",
     "import:gmail": "tsx scripts/import-gmail.ts",
     "archive-phases": "tsx scripts/archive-phases.ts",
-    "gmail-auth": "tsx scripts/gmail-auth.ts"
+    "reset-recurring-events": "tsx scripts/reset-recurring-events.ts",
+    "gmail-auth": "tsx scripts/gmail-auth.ts",
+    "test": "tsx scripts/reset-recurring-events.test.ts"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",

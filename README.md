@@ -9,8 +9,9 @@ local via Power Automate / OneDrive). Chaque page Notion cree porte
 `Status: "To process"`, consomme ensuite par une tache aval (non incluse
 ici).
 
-**Entretien des bases.** Un troisieme script, sans rapport avec les
-emails, sort les phases terminees de la base "Phases".
+**Entretien des bases.** Deux autres scripts, sans rapport avec les
+emails, sortent les phases terminees de la base "Phases" et remettent a
+zero chaque nuit la base "Recurring events".
 
 ## Arborescence
 
@@ -19,11 +20,18 @@ scripts/
   import-gmail.ts      # Gmail -> Notion        (GitHub Actions, quotidien)
   import-outlook.ts    # Outlook -> Notion      (LaunchAgent local, quotidien)
   archive-phases.ts    # entretien base Phases  (GitHub Actions, hebdomadaire)
+  reset-recurring-events.ts       # reset base Recurring events (GitHub Actions, quotidien)
+  reset-recurring-events.test.ts  # tests de la logique de serie, sans appel Notion
   gmail-auth.ts        # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
 .github/workflows/
   import-gmail.yml
   archive-phases.yml
+  reset-recurring-events.yml
 ```
+
+Les tests (`npm test`) ne couvrent que `reset-recurring-events` : c'est le
+seul script dont le comportement depend d'un arbitrage de dates invisible
+a la relecture.
 
 Tous les scripts lisent `.env` **relativement au repertoire courant** :
 les lancer depuis la racine du repo, jamais depuis `scripts/`. Les
@@ -38,7 +46,7 @@ raccourcis `npm run` (`import:gmail`, `import:outlook`, `archive-phases`,
   (`NOTION_DATABASE_ID` est code en dur dans les deux scripts d'ingestion :
   `ba36c9eb-2587-49e0-abd3-0d47276511c0`), et aux bases "Phases", "Tasks",
   "Docs", "Projects", "Sponsors" et "Phases archivees" pour le script
-  d'archivage
+  d'archivage, et a la base "Recurring events" pour le script de reset
 
 ## Variables d'environnement
 
@@ -337,6 +345,115 @@ Workflow : [`.github/workflows/archive-phases.yml`](.github/workflows/archive-ph
 
 ---
 
+## 4. Reset des evenements recurrents
+
+Fichier : [`scripts/reset-recurring-events.ts`](scripts/reset-recurring-events.ts)
+
+Base concernee : "Recurring events" (`3448b4b8-8465-8052-8152-e45a5b833c0e`),
+un flux independant de la base Tasks.
+
+### Fonctionnement
+
+A minuit, les evenements programmes ce jour-la sont reamorces pour la
+journee qui commence : `Done` decoche, `Date` au jour courant. La vue
+"Daily" filtre sur (`Date` = aujourd'hui ET `Done` = false), donc cette
+seule ecriture compose la liste du jour, et un evenement non programme
+aujourd'hui en disparait de lui-meme.
+
+`Series` compte les occurrences consecutives reussies. Le run arbitre la
+journee qui vient de s'ecouler : le `Done` qu'il lit est le clic de
+l'occurrence precedente, jamais celui du jour qui commence.
+
+### Les proprietes qui pilotent le script
+
+Deux proprietes ont ete ajoutees a la base. Les noms restent en anglais
+comme le reste du schema ; les valeurs sont en francais, comme celles de
+`Target session`.
+
+| Propriete | Type | Role |
+|---|---|---|
+| `Recurrence` | select | `Quotidien`, `Hebdo`, `Sur demande`, `En pause`, `Externe` |
+| `Weekday` | multi-select | `Lun` ... `Dim`, lu uniquement si `Recurrence = Hebdo` |
+
+- `Quotidien` : traite tous les jours.
+- `Hebdo` : traite uniquement les jours coches dans `Weekday`. Plusieurs
+  jours sont permis (`Lun` + `Jeu` = deux fois par semaine).
+- `Sur demande` : jamais traite. C'est le cas de "Revue de code",
+  declenchee a la main.
+- `En pause` : jamais traite, gele en l'etat. C'est le cas de "Rubix
+  training".
+- `Externe` : jamais traite, parce qu'un autre processus fait deja le reset
+  de cette page. C'est le cas de "Revue", reinitialisee par un run Claude.
+  Deux resets sur la meme page se marcheraient dessus : celui qui passe en
+  premier pose `Date` au jour courant, et l'autre conclut « deja traite »
+  sans arbitrer `Series`.
+- Vide : jamais traite, mais **signale dans le log et le run sort en
+  erreur** — un evenement sans `Recurrence` est une erreur de saisie, pas
+  un choix.
+
+Le tag `Sur demande` de la propriete `Tags` portait ce role auparavant.
+Il decrivait la nature d'une tache, pas une regle de planification, et ne
+savait pas exprimer "hebdo le mardi" : `Tags` redevient purement metier et
+n'est plus lu par aucun script.
+
+### Arbitrage de `Series`
+
+Le script se fie a `Date` pour savoir a quelle occurrence le `Done` qu'il
+lit se rapporte.
+
+| `Date` lue | Verdict |
+|---|---|
+| = aujourd'hui | Deja passe aujourd'hui, page laissee intacte |
+| = occurrence attendue | Cas nominal : `Done` ? `Series + 1` : `0` |
+| plus ancienne | Un run de minuit a saute : `Series` **gelee** |
+| vide | Premiere prise en charge : `Series = 0` |
+| dans le futur | Signalee, jamais ecrasee |
+
+Le gel merite un mot. Si le run du jeudi ne part pas, la journee du jeudi
+n'est jamais affichee dans la vue (`Date` est restee a mercredi) : elle
+n'a donc pu etre ni reussie ni echouee. Par ailleurs le `Done` encore
+coche est celui de mercredi, deja arbitre par le run du mercredi. Ni
+incrementer ni remettre a zero : une panne d'infrastructure ne casse pas
+une serie, et ne peut pas non plus la gonfler.
+
+Le premier cas du tableau (`Date` = aujourd'hui) rend le script rejouable :
+deux runs le meme jour ne comptent qu'une fois. C'est ce dont depend le
+double cron ci-dessous.
+
+### Lancement manuel
+
+```
+npx tsx scripts/reset-recurring-events.ts --dry-run   # simulation
+npx tsx scripts/reset-recurring-events.ts             # pour de vrai
+npm test                                              # tests de la logique
+```
+
+Attention : un lancement manuel en pleine journee decoche les `Done` deja
+cliques et avance `Date`. Le run de minuit suivant verra `Date` = aujourd'hui
+et ne fera rien, donc la journee est perdue pour la serie.
+
+### Planification : GitHub Actions
+
+Workflow : [`.github/workflows/reset-recurring-events.yml`](.github/workflows/reset-recurring-events.yml)
+
+Deux crons quotidiens, `22:00` et `23:00` UTC. Contrairement aux deux
+autres workflows, celui-ci **ne demande aucune retouche au changement
+d'heure** : `22:00` UTC vaut minuit a Paris en ete, `23:00` UTC vaut minuit
+a Paris en hiver, et celui des deux qui tombe du mauvais cote voit `Date`
+deja au jour courant et ne touche a rien. Le doublon sert aussi de reprise
+si l'un des deux echoue.
+
+Le jour de reference est calcule dans `Europe/Paris`, pas dans le fuseau du
+runner : un runner GitHub est en UTC et se tromperait d'un jour a minuit.
+
+- Seul secret requis : `NOTION_TOKEN` (deja pose pour les autres workflows).
+- Declenchement manuel :
+  ```
+  gh workflow run "Reset Recurring Events (Notion)" --repo aagwali/scripts-notion
+  ```
+
+---
+
 ## Consulter les logs d'execution
 
 Au-dela du resultat visible dans la base Notion, chaque script a sa propre
@@ -385,6 +502,20 @@ de la page archive creee et l'id de chaque Task/Doc reattribuee.
 gh run list --repo aagwali/scripts-notion --workflow "Archive Phases (Notion)" --limit 5
 gh run view <run-id> --repo aagwali/scripts-notion --log
 ```
+
+### Reset des evenements recurrents (GitHub Actions)
+
+Meme acces, workflow `Reset Recurring Events (Notion)`. Le log donne, pour
+chaque evenement, le verdict retenu et sa raison — c'est la ou lire
+pourquoi une serie est repartie de zero ou a ete gelee.
+
+```
+gh run list --repo aagwali/scripts-notion --workflow "Reset Recurring Events (Notion)" --limit 5
+gh run view <run-id> --repo aagwali/scripts-notion --log
+```
+
+Le workflow sort en erreur si un evenement n'a pas de `Recurrence`, ou si
+une ecriture Notion echoue.
 
 Les runs GitHub Actions sont conserves 90 jours. Pour un lot important
 (premiere execution, reprise apres incident), lancer plutot le script en

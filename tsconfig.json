@@ -6,6 +6,8 @@
     "lib": ["es2022"],
     "types": ["node"],
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
   }
 }

@@ -1,0 +1,37 @@
+name: Reset Recurring Events (Notion)
+
+on:
+  schedule:
+    # Minuit a Paris toute l'annee, sans retouche au changement d'heure :
+    # 22:00 UTC = 00:00 Paris en ete (CEST), 23:00 UTC = 00:00 Paris en hiver
+    # (CET). Les deux se declenchent chaque jour ; celui qui tombe du mauvais
+    # cote voit la propriete Date deja au jour courant et ne touche a rien.
+    # Sert aussi de reprise : si l'un des deux echoue, l'autre fait le travail.
+    - cron: "0 22 * * *"
+    - cron: "0 23 * * *"
+  workflow_dispatch: {}
+
+# Les deux crons peuvent se chevaucher si GitHub decale un declenchement :
+# la rejouabilite du script repose sur une lecture puis une ecriture de Date,
+# que deux runs simultanes pourraient enjamber.
+concurrency:
+  group: reset-recurring-events
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Reset des evenements recurrents
+        run: npx tsx scripts/reset-recurring-events.ts
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
