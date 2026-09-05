@@ -21,6 +21,6 @@ jobs:
         run: npm ci
 
       - name: Archive phases terminees
-        run: npx tsx archive-phases.ts
+        run: npx tsx scripts/archive-phases.ts
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}

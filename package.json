@@ -1,10 +1,12 @@
 {
-  "name": "emails-to-notion",
+  "name": "scripts-notion",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx email-to-notion-input-outlook.ts",
-    "archive-phases": "tsx archive-phases.ts"
+    "import:outlook": "tsx scripts/import-outlook.ts",
+    "import:gmail": "tsx scripts/import-gmail.ts",
+    "archive-phases": "tsx scripts/archive-phases.ts",
+    "gmail-auth": "tsx scripts/gmail-auth.ts"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",

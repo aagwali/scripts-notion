@@ -1,12 +1,34 @@
-# email-to-notion
+# scripts-notion
 
-Deux scripts qui alimentent la meme base Notion ("Raw emails") a partir de
-deux sources differentes : Gmail (API) et Outlook Pro (export local via
-Power Automate / OneDrive). Chaque page Notion cree porte `Status: "To
-process"`, consomme ensuite par une tache aval (non incluse ici).
+Scripts d'automatisation autour d'un meme espace Notion, partageant une
+seule integration (`NOTION_TOKEN`) et un seul jeu de dependances.
 
-Un troisieme script, sans rapport avec les emails, entretient la base
-"Phases" du meme espace Notion : il en sort les phases terminees.
+**Ingestion d'emails.** Deux scripts alimentent la base "Raw emails" a
+partir de deux sources differentes : Gmail (API) et Outlook Pro (export
+local via Power Automate / OneDrive). Chaque page Notion cree porte
+`Status: "To process"`, consomme ensuite par une tache aval (non incluse
+ici).
+
+**Entretien des bases.** Un troisieme script, sans rapport avec les
+emails, sort les phases terminees de la base "Phases".
+
+## Arborescence
+
+```
+scripts/
+  import-gmail.ts      # Gmail -> Notion        (GitHub Actions, quotidien)
+  import-outlook.ts    # Outlook -> Notion      (LaunchAgent local, quotidien)
+  archive-phases.ts    # entretien base Phases  (GitHub Actions, hebdomadaire)
+  gmail-auth.ts        # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
+.github/workflows/
+  import-gmail.yml
+  archive-phases.yml
+```
+
+Tous les scripts lisent `.env` **relativement au repertoire courant** :
+les lancer depuis la racine du repo, jamais depuis `scripts/`. Les
+raccourcis `npm run` (`import:gmail`, `import:outlook`, `archive-phases`,
+`gmail-auth`) s'en chargent.
 
 ## Prerequis communs
 
@@ -27,13 +49,13 @@ Fichier `.env` local (jamais commite, voir `.gitignore`) :
 | `NOTION_TOKEN` | les deux | Token d'integration Notion (`secret_xxx` ou `ntn_xxx`) |
 | `GOOGLE_CLIENT_ID` | Gmail | Client OAuth Google (type "Desktop app") |
 | `GOOGLE_CLIENT_SECRET` | Gmail | Secret du client OAuth |
-| `GOOGLE_REFRESH_TOKEN` | Gmail | Genere une fois via `gmail-auth.ts` |
+| `GOOGLE_REFRESH_TOKEN` | Gmail | Genere une fois via `scripts/gmail-auth.ts` |
 
 ---
 
 ## 1. Gmail -> Notion
 
-Fichier : [`email-to-notion-input-gmail.ts`](email-to-notion-input-gmail.ts)
+Fichier : [`scripts/import-gmail.ts`](scripts/import-gmail.ts)
 
 ### Fonctionnement
 
@@ -57,21 +79,21 @@ Fichier : [`email-to-notion-input-gmail.ts`](email-to-notion-input-gmail.ts)
 2. Renseigner `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` dans `.env`.
 3. Lancer une seule fois :
    ```
-   npx tsx gmail-auth.ts
+   npx tsx scripts/gmail-auth.ts
    ```
    Ouvre le navigateur, demande le consentement, ecrit
    `GOOGLE_REFRESH_TOKEN` dans `.env` automatiquement.
    > En mode Testing, ce refresh token expire au bout de 7 jours — relancer
-   > `gmail-auth.ts` si le script commence a echouer avec une erreur de
+   > `scripts/gmail-auth.ts` si le script commence a echouer avec une erreur de
    > rafraichissement.
 4. Lancer manuellement pour verifier :
    ```
-   npx tsx email-to-notion-input-gmail.ts
+   npx tsx scripts/import-gmail.ts
    ```
 
 ### Planification : GitHub Actions
 
-Workflow : [`.github/workflows/email-to-notion-gmail.yml`](.github/workflows/email-to-notion-gmail.yml)
+Workflow : [`.github/workflows/import-gmail.yml`](.github/workflows/import-gmail.yml)
 
 - Declenchement quotidien a `20:00` UTC (soit 22h heure de Paris en ete,
   21h en hiver). GitHub Actions ne connait que l'UTC : pas d'ajustement
@@ -84,24 +106,24 @@ Workflow : [`.github/workflows/email-to-notion-gmail.yml`](.github/workflows/ema
   Actions`) : `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
   `GOOGLE_REFRESH_TOKEN`.
   ```
-  gh secret set NOTION_TOKEN --repo aagwali/email-to-notion --body "..."
-  gh secret set GOOGLE_CLIENT_ID --repo aagwali/email-to-notion --body "..."
-  gh secret set GOOGLE_CLIENT_SECRET --repo aagwali/email-to-notion --body "..."
-  gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/email-to-notion --body "..."
+  gh secret set NOTION_TOKEN --repo aagwali/scripts-notion --body "..."
+  gh secret set GOOGLE_CLIENT_ID --repo aagwali/scripts-notion --body "..."
+  gh secret set GOOGLE_CLIENT_SECRET --repo aagwali/scripts-notion --body "..."
+  gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/scripts-notion --body "..."
   ```
 - Le cron GitHub Actions ne se declenche que sur la **branche par
   defaut** (`main`) — pusher ailleurs ne suffit pas.
 - Declenchement manuel pour tester :
   ```
-  gh workflow run "Email to Notion (Gmail)" --repo aagwali/email-to-notion
-  gh run list --repo aagwali/email-to-notion --limit 1
+  gh workflow run "Import Gmail (Notion)" --repo aagwali/scripts-notion
+  gh run list --repo aagwali/scripts-notion --limit 1
   ```
 
 ---
 
 ## 2. Outlook -> Notion
 
-Fichier : [`email-to-notion-input-outlook.ts`](email-to-notion-input-outlook.ts)
+Fichier : [`scripts/import-outlook.ts`](scripts/import-outlook.ts)
 
 ### Fonctionnement
 
@@ -130,7 +152,7 @@ Le script lit chaque fichier, cree la page Notion correspondante
 ### Lancement manuel
 
 ```
-npx tsx email-to-notion-input-outlook.ts
+npx tsx scripts/import-outlook.ts
 ```
 
 ### Planification : LaunchAgent local
@@ -139,16 +161,16 @@ Ce script depend d'un dossier local (OneDrive monte), donc pas de
 GitHub Actions possible — il tourne directement sur la machine via
 launchd.
 
-Plist : `~/Library/LaunchAgents/com.agwali.email-to-notion-outlook.plist`
+Plist : `~/Library/LaunchAgents/com.agwali.scripts-notion-outlook.plist`
 — declenche tous les jours a **3h30 heure locale**.
 
 ```
 # recharger apres modification du plist
-launchctl unload ~/Library/LaunchAgents/com.agwali.email-to-notion-outlook.plist
-launchctl load ~/Library/LaunchAgents/com.agwali.email-to-notion-outlook.plist
+launchctl unload ~/Library/LaunchAgents/com.agwali.scripts-notion-outlook.plist
+launchctl load ~/Library/LaunchAgents/com.agwali.scripts-notion-outlook.plist
 
 # forcer un run manuel
-launchctl start com.agwali.email-to-notion-outlook
+launchctl start com.agwali.scripts-notion-outlook
 
 # logs
 cat logs/outlook.log
@@ -173,7 +195,7 @@ rien reconstruire :
 
 ## 3. Archivage des phases terminees
 
-Fichier : [`archive-phases.ts`](archive-phases.ts)
+Fichier : [`scripts/archive-phases.ts`](scripts/archive-phases.ts)
 
 ### Le probleme
 
@@ -222,7 +244,7 @@ page parente `Databases`.
 Avant tout run reel, verifier a blanc — aucune ecriture :
 
 ```
-npx tsx archive-phases.ts --dry-run
+npx tsx scripts/archive-phases.ts --dry-run
 ```
 
 ### Fonctionnement
@@ -296,8 +318,8 @@ d'archiver une phase dont le corps n'est pas vide.
 ### Lancement manuel
 
 ```
-npx tsx archive-phases.ts --dry-run   # simulation
-npx tsx archive-phases.ts             # pour de vrai
+npx tsx scripts/archive-phases.ts --dry-run   # simulation
+npx tsx scripts/archive-phases.ts             # pour de vrai
 ```
 
 ### Planification : GitHub Actions
@@ -310,7 +332,7 @@ Workflow : [`.github/workflows/archive-phases.yml`](.github/workflows/archive-ph
 - Seul secret requis : `NOTION_TOKEN` (deja pose pour le workflow Gmail).
 - Declenchement manuel :
   ```
-  gh workflow run "Archive Phases (Notion)" --repo aagwali/email-to-notion
+  gh workflow run "Archive Phases (Notion)" --repo aagwali/scripts-notion
   ```
 
 ---
@@ -322,12 +344,12 @@ trace technique.
 
 ### Gmail (GitHub Actions)
 
-- Interface web : [Actions du repo](https://github.com/aagwali/email-to-notion/actions)
+- Interface web : [Actions du repo](https://github.com/aagwali/scripts-notion/actions)
   — ouvrir le run du jour, chaque step est depliable avec ses logs complets.
 - En CLI :
   ```
-  gh run list --repo aagwali/email-to-notion --limit 5
-  gh run view <run-id> --repo aagwali/email-to-notion --log
+  gh run list --repo aagwali/scripts-notion --limit 5
+  gh run view <run-id> --repo aagwali/scripts-notion --log
   ```
 - Un seul run attendu chaque nuit, autour de `20:00` UTC — mais l'heure
   reelle de declenchement peut varier (voir remarque sur les delais plus
@@ -343,15 +365,15 @@ trace technique.
   (`- fichier.txt` / `ok -> Notion + archive`), soit un message d'echec.
 - Code de sortie du dernier run (0 = OK) :
   ```
-  launchctl list | grep email-to-notion
+  launchctl list | grep scripts-notion
   ```
 - Si `logs/outlook.log` est vide ou absent, c'est le signe que launchd n'a
   meme pas declenche le job (ex : machine en veille toute la nuit). Le
   detail se trouve alors dans les logs systeme :
   ```
-  log show --predicate 'process == "launchd"' --last 12h | grep email-to-notion-outlook
+  log show --predicate 'process == "launchd"' --last 12h | grep scripts-notion-outlook
   ```
-  ou via Console.app en filtrant sur `email-to-notion-outlook`.
+  ou via Console.app en filtrant sur `scripts-notion-outlook`.
 
 ### Archivage des phases (GitHub Actions)
 
@@ -360,8 +382,8 @@ run est la **trace de rollback** : il contient l'id de chaque phase, l'id
 de la page archive creee et l'id de chaque Task/Doc reattribuee.
 
 ```
-gh run list --repo aagwali/email-to-notion --workflow "Archive Phases (Notion)" --limit 5
-gh run view <run-id> --repo aagwali/email-to-notion --log
+gh run list --repo aagwali/scripts-notion --workflow "Archive Phases (Notion)" --limit 5
+gh run view <run-id> --repo aagwali/scripts-notion --log
 ```
 
 Les runs GitHub Actions sont conserves 90 jours. Pour un lot important
@@ -369,7 +391,7 @@ Les runs GitHub Actions sont conserves 90 jours. Pour un lot important
 local et garder la sortie :
 
 ```
-npx tsx archive-phases.ts | tee logs/archive-phases-$(date +%F).log
+npx tsx scripts/archive-phases.ts | tee logs/archive-phases-$(date +%F).log
 ```
 
 ---
@@ -386,7 +408,7 @@ npx tsx archive-phases.ts | tee logs/archive-phases-$(date +%F).log
   reinstalles ou deplaces, adapter la commande dans le plist.
 - **Rafraichissement Google refuse** : si l'app OAuth est en mode
   Testing, le refresh token expire au bout de 7 jours — relancer
-  `npx tsx gmail-auth.ts`.
+  `npx tsx scripts/gmail-auth.ts`.
 - **Plist invalide (`plutil -lint` echoue)** : les caracteres `&`, `<`,
   `>` doivent etre echappes en XML (`&amp;`, `&lt;`, `&gt;`) dans les
   `ProgramArguments`.
