@@ -2,16 +2,12 @@ name: Reset Recurring Events (Notion)
 
 on:
   schedule:
-    # Minuit a Paris toute l'annee, sans retouche au changement d'heure :
-    # 22:00 UTC = 00:00 Paris en ete (CEST), 23:00 UTC = 00:00 Paris en hiver
-    # (CET). Les deux se declenchent chaque jour ; celui qui tombe du mauvais
-    # cote voit la propriete Date deja au jour courant et ne touche a rien.
-    # Sert aussi de reprise : si l'un des deux echoue, l'autre fait le travail.
-    - cron: "0 22 * * *"
-    - cron: "0 23 * * *"
+    # Minuit UTC, donc 1h ou 2h a Paris selon l'heure d'ete/hiver : sans
+    # enjeu, seul le jour calendaire compte pour ce script.
+    - cron: "0 0 * * *"
   workflow_dispatch: {}
 
-# Les deux crons peuvent se chevaucher si GitHub decale un declenchement :
+# Le declenchement planifie et un lancement manuel peuvent se chevaucher :
 # la rejouabilite du script repose sur une lecture puis une ecriture de Date,
 # que deux runs simultanes pourraient enjamber.
 concurrency:

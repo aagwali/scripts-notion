@@ -205,7 +205,7 @@ check("quotidien non fait la veille : remise a zero", () => {
   expect(decide(state({ done: false, series: 3 }), "2026-09-05"), "broken", 0);
 });
 
-check("deja traite aujourd'hui : page intacte (rejouabilite du double cron)", () => {
+check("deja traite aujourd'hui : page intacte (rejouabilite en cas de relance)", () => {
   expect(decide(state({ previousDay: "2026-09-05" }), "2026-09-05"), "skipped", null);
 });
 
