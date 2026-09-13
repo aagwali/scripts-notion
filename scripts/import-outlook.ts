@@ -289,6 +289,36 @@ async function createNotionPage(parsed: ParsedEmail): Promise<void> {
   });
 }
 
+// --- Lecture resiliente (OneDrive Files On-Demand) -------------------------
+
+// Delais entre tentatives. OneDrive peut renvoyer EAGAIN / "Unknown system
+// error -11" sur un placeholder pas encore hydrate ou en cours d'ecriture ;
+// un retry suffit generalement, d'ou l'etalement des delais.
+const READ_RETRY_DELAYS_MS = [2000, 5000, 15000];
+
+function isTransientReadError(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException).code;
+  const message = (err as Error).message ?? "";
+  return code === "EAGAIN" || code === "EBUSY" || code === "ENOENT" || message.includes("Unknown system error -11");
+}
+
+async function readFileWithRetry(filePath: string): Promise<string> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fs.readFile(filePath, "utf-8");
+    } catch (err) {
+      if (!isTransientReadError(err) || attempt >= READ_RETRY_DELAYS_MS.length) {
+        throw err;
+      }
+
+      const delay = READ_RETRY_DELAYS_MS[attempt];
+      const reason = (err as NodeJS.ErrnoException).code ?? "Unknown system error -11";
+      console.log(`  retry ${attempt + 1}/${READ_RETRY_DELAYS_MS.length} apres ${reason} (attente ${delay / 1000}s)`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
+
 // --- Main -----------------------------------------------------------------
 
 async function main(): Promise<void> {
@@ -323,7 +353,7 @@ async function main(): Promise<void> {
     const filePath = path.join(INBOUND_DIR, fileName);
 
     try {
-      const raw = await fs.readFile(filePath, "utf-8");
+      const raw = await readFileWithRetry(filePath);
       const stat = await fs.stat(filePath);
       const stem = path.basename(fileName, path.extname(fileName));
 

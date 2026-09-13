@@ -47,6 +47,25 @@ npx tsx scripts/sync-planning-aline.ts --month 2026-09 --dry-run
 > Le `.env` a ete regenere le **2026-09-05**. Ce test n'est donc
 > exploitable qu'a partir du **2026-09-13**.
 
+## Etape 0.5 — Completer le Branding (prealable decouvert le 2026-09-13)
+
+Le bouton **Publish app** reste grise tant que l'onglet **Branding** du
+consentement n'a pas ces quatre champs : nom de l'appli, email
+d'assistance, URL de la page d'accueil, URL de la politique de
+confidentialite. Le repo etant prive, il n'y avait pas de page publique a
+pointer.
+
+Solution retenue : deux pages Notion publiees sur le web (Partager ->
+Publier sur le web), qui donnent des URLs `*.notion.site` a coller dans
+Branding. Gratuit, immediat, pas besoin d'un plan GitHub payant pour des
+GitHub Pages depuis un repo prive.
+
+Point d'incertitude non tranche : Google demande parfois une verification
+de propriete de domaine (Search Console) pour les "Authorized domains".
+`notion.site` etant un domaine partage, statut a verifier au moment du
+clic sur Publish. Si ca bloque, ne pas s'engager dans la verification de
+domaine — basculer directement sur le Plan B.
+
 ## Etape 1 — Publier en production
 
 [console.cloud.google.com/auth/audience](https://console.cloud.google.com/auth/audience)
@@ -111,6 +130,36 @@ Ce que ca implique dans le repo :
 
 Une demi-journee, pas davantage, mais inutile de la depenser tant que
 l'etape 1 n'a pas ete tentee.
+
+## Piege observe — la liste Test users peut se vider
+
+Le 2026-09-13, une tentative de publication suivie d'un retour a Testing
+a vide la liste **Test users** de l'ecran de consentement. Consequence :
+`google-auth.ts` echoue au moment du consentement (le compte n'est plus
+autorise), meme si Client ID/Secret sont corrects.
+
+Reflexe a avoir des qu'une regeneration echoue de facon inhabituelle :
+verifier **OAuth consent screen -> Audience -> Test users** avant de
+chercher plus loin, et reajouter son propre compte si la liste est vide.
+Rien n'indique que ce vidage soit systematique a chaque bascule
+Testing/Production/Testing — a confirmer si ca se reproduit.
+
+## Decision du 2026-09-13 — reste en Testing
+
+Tentative de sortie de Testing menee jusqu'au bout : Branding complete
+avec deux pages Notion publiees sur le web (`*.notion.site`, le
+sous-domaine complet passe en Authorized domain, la racine `notion.site`
+non). Blocage final : la validation du Branding exige de **prouver la
+propriete du domaine** (Search Console), impossible sur une page Notion.
+Ce controle porte sur le **projet Cloud entier**, pas sur un client OAuth
+individuel — le Plan B ci-dessous (deuxieme client *dans le meme projet*)
+ne l'aurait donc pas contourne tant que `gmail.modify` reste declare
+quelque part dans ce projet. Un Plan B efficace demanderait un second
+**projet Cloud** distinct pour Calendar, pas juste un second client.
+
+Decision retenue : rester en Testing partout. Un evenement recurrent
+hebdomadaire (dimanche) a ete cree dans la base Notion "Recurring events"
+pour rappeler la regeneration manuelle — voir la vue "Daily".
 
 ## Plan C — Verification complete
 
