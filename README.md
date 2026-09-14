@@ -29,15 +29,21 @@ planification, logs et pannes propres.
 
 | Flux | Ce qu'il fait | Declencheur |
 |---|---|---|
-| [Gmail -> Notion](docs/gmail.md) | ingestion des emails Gmail | GitHub Actions, quotidien |
-| [Outlook -> Notion](docs/outlook.md) | ingestion des emails Outlook Pro | LaunchAgent local, quotidien |
-| [Archivage des phases](docs/archive-phases.md) | sort les phases terminees de "Phases" | GitHub Actions, hebdomadaire |
-| [Reset des evenements recurrents](docs/recurring-events.md) | reamorce "Recurring events" chaque nuit | GitHub Actions, quotidien |
-| [Tasks -> Google Calendar](docs/tasks-calendar.md) | projette `Deadline` / `Reminder` | GitHub Actions, quotidien |
-| [Planning d'Aline](docs/planning-aline.md) | projette les jours travailles | a la demande |
-| [Nettoyage de la base Docs](docs/clean-docs.md) | corbeille les logs et digests relus | GitHub Actions, hebdomadaire |
+| [Gmail -> Notion](docs/scripts/import-gmail.md) | ingestion des emails Gmail | GitHub Actions, quotidien |
+| [Outlook -> Notion](docs/scripts/import-outlook.md) | ingestion des emails Outlook Pro | LaunchAgent local, quotidien |
+| [Archivage des phases](docs/scripts/archive-phases.md) | sort les phases terminees de "Phases" | GitHub Actions, hebdomadaire |
+| [Reset des evenements recurrents](docs/scripts/reset-recurring-events.md) | reamorce "Recurring events" chaque nuit | GitHub Actions, quotidien |
+| [Tasks -> Google Calendar](docs/scripts/sync-tasks-calendar.md) | projette `Deadline` / `Reminder` | GitHub Actions, quotidien |
+| [Planning d'Aline](docs/scripts/sync-planning-aline.md) | projette les jours travailles | a la demande |
+| [Nettoyage de la base Docs](docs/scripts/clean-docs.md) | corbeille les logs et digests relus | GitHub Actions, hebdomadaire |
 
-Hors flux : [sortir l'app OAuth du mode Testing](docs/oauth-production.md).
+Index complet et canevas commun : [`docs/scripts/README.md`](docs/scripts/README.md).
+
+Hors flux : [l'autorisation OAuth Google](docs/scripts/google-auth.md), a lancer
+une fois, et [sortir l'app OAuth du mode Testing](docs/oauth-production.md).
+
+Le systeme Notion que ces scripts alimentent n'est pas documente ici : voir
+[`CLAUDE.md`](CLAUDE.md) pour le point d'entree et la regle de frontiere.
 
 ## Arborescence
 
@@ -52,7 +58,10 @@ scripts/
   sync-tasks-calendar.ts          # Tasks -> Google Calendar
   sync-planning-aline.ts          # Planning Aline -> Google Calendar
   google-auth.ts                  # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
-docs/                             # une page par flux, plus le runbook OAuth
+docs/
+  scripts/                        # une page par script, plus leur index
+  oauth-production.md             # runbook : sortir l'app OAuth du mode Testing
+CLAUDE.md                         # identite du systeme, frontiere depot / Notion
 .claude/skills/
   planning-aline/SKILL.md         # la tache Claude qui lit la photo du tableau
 .github/workflows/                # un workflow par flux, sauf import-outlook (local)
@@ -66,7 +75,7 @@ Tout tourne de nuit, dans cet ordre (heures de Paris) :
 |---|---|---|---|
 | 22h | `import-gmail` | GitHub Actions | `0 20 * * *` UTC |
 | 23h | `import-outlook` | LaunchAgent local | `Hour 23` (heure locale) |
-| minuit | `reset-recurring-events` | GitHub Actions | `0 22` + `0 23 * * *` UTC |
+| 1h ou 2h | `reset-recurring-events` | GitHub Actions | `0 0 * * *` UTC |
 | 2h | `sync-tasks-calendar` | GitHub Actions | `0 0 * * *` UTC |
 | dimanche 5h | `clean-docs` | GitHub Actions | `0 3 * * 0` UTC |
 | lundi 4h | `archive-phases` | GitHub Actions | `0 2 * * 1` UTC |
@@ -76,9 +85,10 @@ repetees dans les pages de flux :
 
 - **Les heures sont ecrites en UTC et ne suivent pas le changement
   d'heure.** Celles du tableau valent pour l'ete (CEST), tout glisse d'une
-  heure en hiver, a corriger a la main dans le cron si besoin. Seul
-  [`reset-recurring-events`](docs/recurring-events.md) y echappe, avec ses
-  deux crons encadrant minuit.
+  heure en hiver, a corriger a la main dans le cron si besoin.
+  [`reset-recurring-events`](docs/scripts/reset-recurring-events.md) est le
+  seul que ce glissement n'affecte pas : seul le jour calendaire compte pour
+  lui, et il le calcule dans `Europe/Paris`.
 - **Un run planifie peut etre retarde** de plusieurs minutes a plusieurs
   heures selon la charge de l'infra GitHub. L'etalement ecrit dans les
   crons n'est pas celui qui est obtenu — l'ordre du tableau a surtout une
@@ -87,7 +97,7 @@ repetees dans les pages de flux :
 - **Le cron ne se declenche que sur la branche par defaut** (`main`) —
   pusher ailleurs ne suffit pas.
 
-[`sync-planning-aline`](docs/planning-aline.md) echappe au tableau : aucun
+[`sync-planning-aline`](docs/scripts/sync-planning-aline.md) echappe au tableau : aucun
 cron, il est declenche a la main (ou par la skill) quand une nouvelle photo
 du tableau blanc arrive.
 
@@ -113,6 +123,9 @@ s'en chargent.
 - Un client OAuth Google, decrit ci-dessous.
 
 ### Mise en place OAuth Google
+
+Detail complet, pieges du flux loopback et depannage :
+[`docs/scripts/google-auth.md`](docs/scripts/google-auth.md).
 
 Un **seul** client OAuth couvre Gmail et Calendar : `google-auth.ts`
 demande les deux scopes (`gmail.modify` + `calendar.events`) en une fois,
@@ -183,9 +196,10 @@ npx tsx scripts/archive-phases.ts | tee logs/archive-phases-$(date +%F).log
 ## Depannage
 
 Pannes transverses. Les pannes propres a un flux sont sur sa page :
-[Outlook](docs/outlook.md#depannage) (launchd, plist),
-[archivage](docs/archive-phases.md#depannage) (proprietes, `INCOMPLET`),
-[Tasks Calendar](docs/tasks-calendar.md#depannage) (scope Calendar).
+[Outlook](docs/scripts/import-outlook.md#depannage) (launchd, plist),
+[archivage](docs/scripts/archive-phases.md#depannage) (proprietes, `INCOMPLET`),
+[Tasks Calendar](docs/scripts/sync-tasks-calendar.md#limites-connues) (scope Calendar),
+[OAuth Google](docs/scripts/google-auth.md#depannage) (token, scopes).
 
 - **`Variables d'environnement manquantes`** : verifier `.env` —
   attention au format, `client id : xxx` n'est PAS une syntaxe valide, il

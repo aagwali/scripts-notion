@@ -16,7 +16,7 @@
  * Usage :
  *   npm install tsx dotenv
  *   npx tsx scripts/google-auth.ts        (une seule fois)
- *   npx tsx email-to-notion-input-gmail.ts
+ *   npx tsx scripts/import-gmail.ts
  *
  * Variables d'environnement (.env) :
  *   NOTION_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN

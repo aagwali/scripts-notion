@@ -17,7 +17,7 @@
  * Usage :
  *   npm install tsx dotenv
  *   export NOTION_TOKEN="secret_xxx"
- *   npx tsx email-to-notion-input-outlook.ts
+ *   npx tsx scripts/import-outlook.ts
  *
  * Node >= 18 requis (fetch natif).
  */

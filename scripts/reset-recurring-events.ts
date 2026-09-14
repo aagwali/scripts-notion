@@ -28,8 +28,8 @@
  * Series, selon ce que la propriete Date revele du run precedent :
  *
  *   Date == aujourd'hui  deja passe aujourd'hui, page laissee intacte.
- *                        C'est la garantie de rejouabilite dont depend le
- *                        double cron (voir plus bas).
+ *                        C'est la garantie de rejouabilite qui permet au cron
+ *                        et a un lancement manuel de coexister.
  *
  *   Date == occurrence   cas nominal, le Done lu se rapporte bien a
  *   attendue             l'occurrence precedente : Done ? Series + 1 : 0
