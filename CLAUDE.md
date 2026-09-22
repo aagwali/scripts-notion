@@ -82,6 +82,3 @@ Notion la rendrait inopérante : une skill ne se déclenche que depuis
 Quatre secrets, jamais dans le dépôt : `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`,
 `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`. En local dans `.env` (gabarit
 dans `.env.example`), en CI dans les secrets du repo.
-
-Un seul script n'est pas planifiable sur GitHub Actions : `import-outlook.ts`,
-qui dépend d'un dossier OneDrive local et tourne via un LaunchAgent.

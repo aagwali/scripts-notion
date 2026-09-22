@@ -1,5 +1,21 @@
 #!/usr/bin/env -S npx tsx
 /**
+ * ARCHIVE — ne plus lancer, plus reference nulle part.
+ *
+ * L'ingestion de la boite Reply passait par un flux Power Automate deposant un
+ * fichier par email dans un dossier OneDrive local. Elle est abandonnee : la
+ * boite pro n'est plus lue automatiquement, la capture se fait a la voix.
+ *
+ * Conserve pour deux morceaux reutilisables : le parsing d'en-tetes tolerant a
+ * l'ordre et aux absences, et `toIsoWithOffset`, qui recompose un ISO 8601 a
+ * partir d'une heure locale nue et d'un nom de fuseau — utile si une reprise
+ * des invitations par ICS voit le jour.
+ *
+ * Le code vise une base et des proprietes qui ont depuis change. Ne pas le
+ * rejouer sans relecture complete.
+ *
+ * ---
+ *
  * Ingestion des emails du dossier inbound (OneDrive / Power Automate) vers la
  * base Notion "Raw emails", puis archivage des fichiers traites.
  *

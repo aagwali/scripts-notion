@@ -6,12 +6,12 @@
 | Declencheur | GitHub Actions, quotidien `0 20 * * *` UTC (22h a Paris en ete) |
 | Secrets | `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` |
 | Lit | Gmail (API), scope `gmail.modify` |
-| Ecrit | base Notion "Raw emails" (`ba36c9eb-2587-49e0-abd3-0d47276511c0`), label Gmail `Importé` |
+| Ecrit | base Notion "Raw inputs" (`ba36c9eb-2587-49e0-abd3-0d47276511c0`), label Gmail `Importé` |
 | Calendriers Google | aucun |
 
 ## Role
 
-Alimente la base "Raw emails" depuis la boite Gmail personnelle. Chaque page
+Alimente la base "Raw inputs" depuis la boite Gmail personnelle. Chaque page
 creee porte `Status = "To process"`. Le script ne fait que du factuel :
 extraction d'en-tetes, aplatissement du corps, nettoyage mecanique. Aucune
 classification, aucun resume — c'est le travail du consommateur en aval.
@@ -35,7 +35,7 @@ l'identifiant Gmail (§3.1) et le cycle d'idempotence (§8).
 Le bornage a 2 jours vaut aussi pour le premier run : au-dela, un mail non
 importe releve de l'incident, pas du fonctionnement nominal.
 
-## Ce qui est ecrit dans "Raw emails"
+## Ce qui est ecrit dans "Raw inputs"
 
 | Propriete Notion | Source |
 |---|---|
@@ -50,6 +50,7 @@ importe releve de l'incident, pas du fonctionnement nominal.
 | `Unsubscribe URL` | en-tete `List-Unsubscribe`, https prioritaire sur mailto, omise si vide |
 | `Labels` | noms des labels Gmail, virgules remplacees par des espaces |
 | `Source` | `Perso`, en dur |
+| `Channel` | `Email`, en dur |
 | `Status` | `To process`, en dur |
 
 **`Gmail message ID` n'est pas un doublon de `Message ID`.** Les deux sont
@@ -92,13 +93,13 @@ Un echec ne bloque jamais les autres messages du lot.
 Aucune procedure automatique — le script ne supprime rien et ne modifie aucun
 email, il ajoute un label.
 
-- **Annuler un import** : mettre la page "Raw emails" a la corbeille Notion
+- **Annuler un import** : mettre la page "Raw inputs" a la corbeille Notion
   (restaurable 30 jours) et retirer le label `Importé` du message dans Gmail.
   Sans ce retrait, le message ne sera jamais reimporte.
 - **Reimporter tout un lot** : retirer `Importé` des messages concernes. Le
   controle `Message ID` empechera les doublons si les pages Notion sont
   toujours la.
-- Gmail reste la source de verite : une ligne "Raw emails" perdue ne perd pas
+- Gmail reste la source de verite : une ligne "Raw inputs" perdue ne perd pas
   l'email, elle perd son traitement automatique.
 
 ## Lancement manuel
@@ -162,6 +163,7 @@ Workflow : [`.github/workflows/import-gmail.yml`](../../.github/workflows/import
 - **Pas de retry ni de throttle Notion** dans ce script, contrairement aux
   scripts d'entretien : le volume est faible et le travail est par message,
   donc un echec isole est repris au run suivant plutot que retente.
-- **La suppression de la propriete `Gmail message ID`** ferait echouer toute
-  creation de page (Notion rejette une propriete inconnue dans le payload) et
-  degraderait la tache aval. Voir plus haut.
+- **La suppression des proprietes `Gmail message ID` ou `Channel`** ferait
+  echouer toute creation de page : Notion rejette une propriete inconnue dans
+  le payload. Les deux sont ecrites ici et lues par la tache aval, qui
+  discrimine sur `Channel` la mecanique propre aux emails.

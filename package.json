@@ -3,7 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "import:outlook": "tsx scripts/import-outlook.ts",
     "import:gmail": "tsx scripts/import-gmail.ts",
     "archive-phases": "tsx scripts/archive-phases.ts",
     "reset-recurring-events": "tsx scripts/reset-recurring-events.ts",

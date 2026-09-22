@@ -3,11 +3,10 @@
 Scripts d'automatisation autour d'un meme espace Notion, partageant une
 seule integration (`NOTION_TOKEN`) et un seul jeu de dependances.
 
-**Ingestion d'emails.** Deux scripts alimentent la base "Raw emails" a
-partir de deux sources differentes : Gmail (API) et Outlook Pro (export
-local via Power Automate / OneDrive). Chaque page Notion cree porte
-`Status: "To process"`, consomme ensuite par une tache aval (non incluse
-ici).
+**Ingestion.** Un script alimente la base "Raw inputs" depuis Gmail
+(API). Chaque page Notion cree porte `Status: "To process"`, consomme
+ensuite par une tache aval (non incluse ici). La base recoit aussi des
+captures ecrites hors depot.
 
 **Entretien des bases.** Trois autres scripts, sans rapport avec les
 emails, sortent les phases terminees de la base "Phases", remettent a
@@ -22,7 +21,7 @@ dedies, et retire de l'agenda ce qui a disparu de Notion.
 jours travailles de la base "Planning Aline", elle-meme alimentee par une
 tache Claude qui lit la photo d'un tableau blanc.
 
-## Les sept flux
+## Les six flux
 
 Chaque flux a sa page : fonctionnement, choix de conception, lancement,
 planification, logs et pannes propres.
@@ -30,7 +29,6 @@ planification, logs et pannes propres.
 | Flux | Ce qu'il fait | Declencheur |
 |---|---|---|
 | [Gmail -> Notion](docs/scripts/import-gmail.md) | ingestion des emails Gmail | GitHub Actions, quotidien |
-| [Outlook -> Notion](docs/scripts/import-outlook.md) | ingestion des emails Outlook Pro | LaunchAgent local, quotidien |
 | [Archivage des phases](docs/scripts/archive-phases.md) | sort les phases terminees de "Phases" | GitHub Actions, hebdomadaire |
 | [Reset des evenements recurrents](docs/scripts/reset-recurring-events.md) | reamorce "Recurring events" chaque nuit | GitHub Actions, quotidien |
 | [Tasks -> Google Calendar](docs/scripts/sync-tasks-calendar.md) | projette `Deadline` / `Reminder` | GitHub Actions, quotidien |
@@ -50,7 +48,6 @@ Le systeme Notion que ces scripts alimentent n'est pas documente ici : voir
 ```
 scripts/
   import-gmail.ts                 # Gmail -> Notion
-  import-outlook.ts               # Outlook -> Notion
   archive-phases.ts               # entretien base Phases
   reset-recurring-events.ts       # reset base Recurring events
   reset-recurring-events.test.ts  # tests de la logique de serie, sans appel Notion
@@ -64,7 +61,7 @@ docs/
 CLAUDE.md                         # identite du systeme, frontiere depot / Notion
 .claude/skills/
   planning-aline/SKILL.md         # la tache Claude qui lit la photo du tableau
-.github/workflows/                # un workflow par flux, sauf import-outlook (local)
+.github/workflows/                # un workflow par flux
 ```
 
 ## Planification
@@ -74,7 +71,6 @@ Tout tourne de nuit, dans cet ordre (heures de Paris) :
 | Heure | Script | Declencheur | Cron |
 |---|---|---|---|
 | 22h | `import-gmail` | GitHub Actions | `0 20 * * *` UTC |
-| 23h | `import-outlook` | LaunchAgent local | `Hour 23` (heure locale) |
 | 1h ou 2h | `reset-recurring-events` | GitHub Actions | `0 0 * * *` UTC |
 | 2h | `sync-tasks-calendar` | GitHub Actions | `0 0 * * *` UTC |
 | dimanche 5h | `clean-docs` | GitHub Actions | `0 3 * * 0` UTC |
@@ -107,18 +103,17 @@ a la relecture.
 
 Tous les scripts lisent `.env` **relativement au repertoire courant** :
 les lancer depuis la racine du repo, jamais depuis `scripts/`. Les
-raccourcis `npm run` (`import:gmail`, `import:outlook`, `archive-phases`,
-`clean-docs`, `google-auth`, `sync-tasks-calendar`, `sync-planning-aline`)
-s'en chargent.
+raccourcis `npm run` (`import:gmail`, `archive-phases`, `clean-docs`,
+`google-auth`, `sync-tasks-calendar`, `sync-planning-aline`) s'en chargent.
 
 ## Prerequis communs
 
 - Node >= 18 (fetch natif)
 - `npm install`
 - Une integration Notion partagee avec les bases utilisees. Chaque page de
-  flux nomme les siennes ; l'ensemble couvre "Raw emails"
-  (`ba36c9eb-2587-49e0-abd3-0d47276511c0`, code en dur dans les deux
-  scripts d'ingestion), "Phases", "Phases archivees", "Tasks", "Docs",
+  flux nomme les siennes ; l'ensemble couvre "Raw inputs"
+  (`ba36c9eb-2587-49e0-abd3-0d47276511c0`, code en dur dans le script
+  d'ingestion), "Phases", "Phases archivees", "Tasks", "Docs",
   "Projects", "Sponsors", "Recurring events" et "Planning Aline".
 - Un client OAuth Google, decrit ci-dessous.
 
@@ -196,7 +191,6 @@ npx tsx scripts/archive-phases.ts | tee logs/archive-phases-$(date +%F).log
 ## Depannage
 
 Pannes transverses. Les pannes propres a un flux sont sur sa page :
-[Outlook](docs/scripts/import-outlook.md#depannage) (launchd, plist),
 [archivage](docs/scripts/archive-phases.md#depannage) (proprietes, `INCOMPLET`),
 [Tasks Calendar](docs/scripts/sync-tasks-calendar.md#limites-connues) (scope Calendar),
 [OAuth Google](docs/scripts/google-auth.md#depannage) (token, scopes).

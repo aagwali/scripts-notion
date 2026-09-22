@@ -1,6 +1,6 @@
 #!/usr/bin/env -S npx tsx
 /**
- * Ingestion des emails Gmail vers la base Notion "Raw emails".
+ * Ingestion des emails Gmail vers la base Notion "Raw inputs".
  *
  * Gmail reste la source de verite. Ce script en produit une projection
  * allegee dans Notion, destinee a la tache planifiee A. Il ne fait que du
@@ -28,7 +28,7 @@ import "dotenv/config";
 
 // --- Config -----------------------------------------------------------
 
-const NOTION_DATABASE_ID = "ba36c9eb-2587-49e0-abd3-0d47276511c0"; // Raw emails
+const NOTION_DATABASE_ID = "ba36c9eb-2587-49e0-abd3-0d47276511c0"; // Raw inputs
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = "2022-06-28";
 
@@ -351,6 +351,7 @@ async function createNotionPage(row: NotionRow): Promise<void> {
     "Gmail message ID": { rich_text: chunkRichText(row.gmailId) },
     Labels: { multi_select: row.labels.map((name) => ({ name })) },
     Source: { select: { name: "Perso" } },
+    Channel: { select: { name: "Email" } },
     Status: { select: { name: "To process" } },
   };
 

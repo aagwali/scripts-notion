@@ -10,15 +10,17 @@ Notion, le parcours utilisateur et les modes operatoires des taches planifiees
 vivent sur Notion et s'y lisent via le MCP — voir
 [`CLAUDE.md`](../../CLAUDE.md) pour la regle de frontiere et le point d'entree.
 
-## Ingestion d'emails
+## Ingestion
 
-Les deux alimentent la base "Raw emails" en `Status = To process`. Le
-consommateur est une tache planifiee claude.ai, documentee sur Notion.
+Alimente la base "Raw inputs" en `Status = To process`. Le consommateur est
+une tache planifiee claude.ai, documentee sur Notion.
 
 | Doc | Script | Declencheur |
 |---|---|---|
 | [Gmail -> Notion](import-gmail.md) | `import-gmail.ts` | Actions, quotidien 22h |
-| [Outlook -> Notion](import-outlook.md) | `import-outlook.ts` | LaunchAgent local, 23h |
+
+"Raw inputs" recoit aussi des lignes qu'aucun script d'ici n'ecrit — voir
+[plus bas](#ce-quaucun-script-de-ce-depot-ne-fait).
 
 ## Projection vers Google Calendar
 
@@ -52,10 +54,12 @@ consommateur est une tache planifiee claude.ai, documentee sur Notion.
 
 A verifier avant de chercher un bug au mauvais endroit :
 
-- **La base "Meetings"** n'est ecrite par aucun script d'ici. Elle l'est par la
-  tache planifiee claude.ai qui traite les emails.
-- **La classification des emails** (Task / Doc / digest), la pose du label
-  `Traité`, les labels metier : meme tache, pas ce depot. L'ingestion ne pose
+- **La capture vocale** n'a pas de script ici : elle ecrit directement dans
+  "Raw inputs" (`Channel = Vocal`), sans passer par le depot.
+- **La base "Meetings"** n'est ecrite par aucun script d'ici, ni par aucune
+  tache planifiee : elle est alimentee a la main.
+- **La classification** (Task / Doc / digest), la pose du label `Traité`, les
+  labels metier : tache planifiee claude.ai, pas ce depot. L'ingestion ne pose
   que `Importé`.
 - **Le calendrier `EDF`** est alimente a la main. Un script d'import est
   envisage, il n'existe pas.
