@@ -56,8 +56,8 @@ A verifier avant de chercher un bug au mauvais endroit :
 
 - **La capture vocale** n'a pas de script ici : elle ecrit directement dans
   "Raw inputs" (`Channel = Vocal`), sans passer par le depot.
-- **La base "Meetings"** n'est ecrite par aucun script d'ici, ni par aucune
-  tache planifiee : elle est alimentee a la main.
+- **La base "Meetings"** n'est ecrite par aucun script d'ici. Elle l'est par la
+  tache planifiee claude.ai, depuis les reunions dictees en capture vocale.
 - **La classification** (Task / Doc / digest), la pose du label `Traité`, les
   labels metier : tache planifiee claude.ai, pas ce depot. L'ingestion ne pose
   que `Importé`.

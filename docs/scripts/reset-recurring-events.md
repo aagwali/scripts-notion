@@ -63,10 +63,9 @@ francais, comme celles de `Target session`.
 - Vide : jamais traite, mais **signale dans le log et le run sort en erreur** —
   un evenement sans `Recurrence` est une erreur de saisie, pas un choix.
 
-Le tag `Sur demande` de la propriete `Tags` portait ce role auparavant. Il
-decrivait la nature d'une tache, pas une regle de planification, et ne savait
-pas exprimer « hebdo le mardi » : `Tags` redevient purement metier et n'est
-plus lu par aucun script.
+`Recurrence` porte seule cette responsabilite, et `Tags` reste purement
+metier : aucun script ne le lit. Un tag decrit la nature d'une tache, pas une
+regle de planification, et ne sait pas exprimer « hebdo le mardi ».
 
 ## Arbitrage de `Series`
 

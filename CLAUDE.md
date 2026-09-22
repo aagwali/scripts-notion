@@ -43,6 +43,13 @@ Notion la rendrait inopérante : une skill ne se déclenche que depuis
 > dans la même session. Un écart constaté mais non corrigé part en ligne du
 > Backlog. Aucun écart ne reste non écrit.
 
+> **La doc dit l'état cible, jamais son évolution.** Le corps d'un doc — ici
+> comme sur Notion — décrit le comportement en vigueur comme s'il avait toujours
+> été ainsi. Proscrits : « désormais », « ne fait plus », « l'ancien X est
+> supprimé », « au lieu de », « ex-tâche ». Un *motif* de conception s'écrit et
+> se garde, il explique pourquoi la règle est ce qu'elle est ; un *historique* ne
+> s'écrit pas — il vit dans git et dans le Backlog.
+
 ## Limitations connues
 
 - **Plan Notion gratuit** : pas d'automation native. Tout automatisme vient d'un
