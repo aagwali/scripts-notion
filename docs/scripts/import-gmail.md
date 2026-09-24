@@ -17,7 +17,7 @@ extraction d'en-tetes, aplatissement du corps, nettoyage mecanique. Aucune
 classification, aucun resume — c'est le travail du consommateur en aval.
 
 Ce consommateur est une tache planifiee claude.ai, dont le mode operatoire vit
-sur Notion : [Run quotidien email](https://app.notion.com/p/3cd8b4b88465815eb7bff0b74c7ad4ba).
+sur Notion : [Run quotidien ingestion](https://app.notion.com/p/3cd8b4b88465815eb7bff0b74c7ad4ba).
 Ne pas en recopier le contenu ici. Deux points de ce doc contraignent
 directement ce script, et sont donc rappeles plus bas : la resolution de
 l'identifiant Gmail (§3.1) et le cycle d'idempotence (§8).
