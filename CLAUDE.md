@@ -1,8 +1,8 @@
-# scripts-notion — poste de travail du système SPPT
+# scripts-notion — poste de travail du système Trace
 
 ## Ce qu'est ce système
 
-Méthode **SPPT — Sponsor · Projet · Phase · Tâche**, déclinée dans un espace
+Méthode **Trace — Sponsor · Projet · Phase · Tâche**, déclinée dans un espace
 Notion, les Pomodoros servant de ledger de temps. Deux axes :
 
 - **action** — capture, planification, exécution : Tasks, Recurring events, Pomodoros ;
@@ -14,7 +14,7 @@ archivage et nettoyage des bases. Le système, lui, vit dans Notion.
 
 ## Source de vérité
 
-**🗂️ Index — Système SPPT**
+**🗂️ Index — Système Trace**
 <https://app.notion.com/p/3da8b4b88465817e955edeb15272ed51>
 
 À lire au début de toute session, via le MCP Notion. Cette page pointe vers la
@@ -23,7 +23,7 @@ de run. L'état réel du workspace prime sur toute doc, y compris sur elle.
 
 ## Frontière dépôt / Notion
 
-> La documentation du système SPPT et les instructions opérationnelles des tâches
+> La documentation du système Trace et les instructions opérationnelles des tâches
 > planifiées vivent EXCLUSIVEMENT sur Notion, et s'y lisent et s'y éditent via le
 > MCP Notion. Ne jamais les copier, résumer ni dupliquer dans ce dépôt : les
 > tâches planifiées claude.ai n'ont pas accès au dépôt, et une copie locale
