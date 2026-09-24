@@ -64,21 +64,21 @@
  */
 
 import "dotenv/config";
+import { instance } from "../config/index.ts";
 
 // --- Config -----------------------------------------------------------
 
-const PLANNING_DATABASE_ID = "8042d9c1-3ea1-481d-a64e-b48d9a138f19"; // Planning Aline
+const PLANNING_DATABASE_ID = instance.notion.databases.planningAline.database_id;
 
 /**
  * Calendrier dedie "Planning Aline", cree a la main dans l'UI Google
  * Calendar : le scope `calendar.events` permet d'ecrire des evenements,
  * pas de creer un calendrier.
  */
-const PLANNING_CALENDAR_ID =
-  "affbc5703ccd88c8fd08e946acf97e75cd87896faea2411eda2c7f31c8971b4e@group.calendar.google.com";
+const PLANNING_CALENDAR_ID = instance.google.calendars.planningAline;
 
 /** Calendrier personnel, tenu a la main, ou atterrissent les rdv annexes. */
-const PERSONAL_CALENDAR_ID = "adrienagwali@gmail.com";
+const PERSONAL_CALENDAR_ID = instance.google.calendars.personal;
 
 /**
  * Les horaires vivent ici et pas dans Notion : le tableau blanc ne porte

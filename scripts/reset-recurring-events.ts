@@ -56,10 +56,11 @@
 
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
+import { instance } from "../config/index.ts";
 
 // --- Config -----------------------------------------------------------
 
-const RECURRING_DATABASE_ID = "3448b4b8-8465-8052-8152-e45a5b833c0e"; // Recurring events
+const RECURRING_DATABASE_ID = instance.notion.databases.recurringEvents.database_id;
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = "2022-06-28";

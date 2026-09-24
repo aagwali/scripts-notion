@@ -10,7 +10,8 @@
     "sync-tasks-calendar": "tsx scripts/sync-tasks-calendar.ts",
     "sync-planning-aline": "tsx scripts/sync-planning-aline.ts",
     "clean-docs": "tsx scripts/clean-docs.ts",
-    "test": "tsx scripts/reset-recurring-events.test.ts"
+    "check:ids": "tsx scripts/check-hardcoded-ids.ts",
+    "test": "tsx scripts/reset-recurring-events.test.ts && npm run check:ids"
   },
   "devDependencies": {
     "@types/node": "^26.4.0",

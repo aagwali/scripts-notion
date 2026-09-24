@@ -5,8 +5,8 @@
 | Script | [`scripts/archive-phases.ts`](../../scripts/archive-phases.ts) |
 | Declencheur | GitHub Actions, hebdomadaire `0 2 * * 1` UTC (lundi 4h a Paris en ete) |
 | Secrets | `NOTION_TOKEN` |
-| Lit | "Phases" (`34a8b4b8-8465-80e7-989e-ed7c68b525fa`), "Tasks" (`3438b4b8-8465-80a6-ac08-d30445212e90`), "Docs" (`3448b4b8-8465-8016-876c-df35377f3d83`) |
-| Ecrit | "Phases archivees" (`3d28b4b8-8465-819d-808a-f6bdb4978194`), plus `Phase archivée` / `Phase` sur Tasks et Docs |
+| Lit | "Phases" (config `notion.databases.phases`), "Tasks" (`notion.databases.tasks`), "Docs" (`notion.databases.docs`) |
+| Ecrit | "Phases archivees" (config `notion.databases.phasesArchive`), plus `Phase archivée` / `Phase` sur Tasks et Docs |
 | Calendriers Google | aucun |
 
 Les bases "Projects" et "Sponsors" sont referencees en lecture seule, via les
@@ -26,8 +26,8 @@ relation**, `Phase archivée`, pointant vers la base archive.
 
 ## La base "Phases archivees"
 
-Deja creee (id `3d28b4b8-8465-819d-808a-f6bdb4978194`), sous la page
-`Databases`. Schema, pour reference et pour pouvoir la recreer :
+Deja creee (id dans `config/instance.json` → `notion.databases.phasesArchive`),
+sous la page `Databases`. Schema, pour reference et pour pouvoir la recreer :
 
 | Propriete | Type | Origine |
 |---|---|---|

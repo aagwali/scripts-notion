@@ -6,8 +6,8 @@
 | Tache Claude | [`.claude/skills/planning-aline/SKILL.md`](../../.claude/skills/planning-aline/SKILL.md) |
 | Declencheur | `workflow_dispatch` uniquement — **aucun cron** |
 | Secrets | `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` |
-| Lit | base Notion "Planning Aline" (`8042d9c1-3ea1-481d-a64e-b48d9a138f19`) |
-| Ecrit | calendriers `Planning Aline` (`affbc570...c8971b4e`) et perso (`adrienagwali@gmail.com`) |
+| Lit | base Notion "Planning Aline" (config `notion.databases.planningAline`) |
+| Ecrit | calendriers `Planning Aline` (config `google.calendars.planningAline`) et perso (`google.calendars.personal`) |
 
 Seul flux du repo lance a la demande. Le script n'ecrit **jamais** dans Notion :
 il ne fait que lire la base et poser des evenements.
@@ -49,7 +49,7 @@ facon pas one-shot.
 | | Jours travailles | Rendez-vous |
 |---|---|---|
 | Ligne Notion | `Type = Travail` | `Type = RDV` |
-| Calendrier | `Planning Aline` (dedie) | `adrienagwali@gmail.com` (**perso**) |
+| Calendrier | `Planning Aline` (dedie) | perso (config `google.calendars.personal`) |
 | Titre | `H1 · 6h30-18h30` | le libelle lu sur le tableau |
 | Forme | journee entiere | journee entiere, ou horaire (60 min) si la date Notion porte une heure |
 
@@ -132,13 +132,13 @@ le second est ignore, et le run le signale (`cle deja prise, ligne ignoree`).
 
 ## Le calendrier dedie
 
-`Planning Aline`
-(`affbc5703ccd88c8fd08e946acf97e75cd87896faea2411eda2c7f31c8971b4e`) est cree
-**a la main** dans l'UI Google Calendar. Le scope `calendar.events` du refresh
-token partage permet d'ecrire des evenements, pas de creer un calendrier ;
-elargir ce scope en permanence pour une creation unique ne se justifie pas. Son
-id est code en dur, comme les autres ids de calendriers du repo — ce ne sont
-pas des secrets.
+`Planning Aline` (id dans `config/instance.json` →
+`google.calendars.planningAline`) est cree **a la main** dans l'UI Google
+Calendar. Le scope `calendar.events` du refresh token partage permet d'ecrire
+des evenements, pas de creer un calendrier ; elargir ce scope en permanence
+pour une creation unique ne se justifie pas. Son id vit dans
+`config/instance.json`, comme les autres ids de calendriers du repo — ce ne
+sont pas des secrets.
 
 ## Lancement
 

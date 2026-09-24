@@ -49,10 +49,11 @@
  */
 
 import "dotenv/config";
+import { instance } from "../config/index.ts";
 
 // --- Config -----------------------------------------------------------
 
-const TASKS_DATABASE_ID = "3438b4b8-8465-80a6-ac08-d30445212e90"; // Tasks
+const TASKS_DATABASE_ID = instance.notion.databases.tasks.database_id;
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = "2022-06-28";
@@ -95,15 +96,13 @@ const SLOTS: Slot[] = [
     label: "Deadline",
     dateProp: "Deadline",
     eventIdProp: "Google Event Id (deadline)",
-    calendarId:
-      "46e7917d35bd73470e53670206150853ef5d6d7e4c95f86883861f4eeef7eccf@group.calendar.google.com",
+    calendarId: instance.google.calendars.deadlines,
   },
   {
     label: "Reminder",
     dateProp: "Reminder",
     eventIdProp: "Google Event Id (reminder)",
-    calendarId:
-      "885a7de408da9ea3756b77cc2bf356eccb6170d0e0a78a003202949a4f9ddb3a@group.calendar.google.com",
+    calendarId: instance.google.calendars.reminders,
   },
 ];
 

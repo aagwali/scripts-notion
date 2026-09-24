@@ -25,10 +25,11 @@
  */
 
 import "dotenv/config";
+import { instance } from "../config/index.ts";
 
 // --- Config -----------------------------------------------------------
 
-const NOTION_DATABASE_ID = "ba36c9eb-2587-49e0-abd3-0d47276511c0"; // Raw inputs
+const NOTION_DATABASE_ID = instance.notion.databases.rawInputs.database_id;
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = "2022-06-28";
 

@@ -6,7 +6,7 @@
 | Tests | [`scripts/reset-recurring-events.test.ts`](../../scripts/reset-recurring-events.test.ts) — `npm test` |
 | Declencheur | GitHub Actions, quotidien `0 0 * * *` UTC |
 | Secrets | `NOTION_TOKEN` |
-| Lit / ecrit | base Notion "Recurring events" (`3448b4b8-8465-8052-8152-e45a5b833c0e`) |
+| Lit / ecrit | base Notion "Recurring events" (config `notion.databases.recurringEvents`) |
 | Calendriers Google | aucun |
 
 Un flux independant de la base Tasks.
