@@ -5,8 +5,8 @@
 | Script | [`scripts/sync-tasks-calendar.ts`](../../scripts/sync-tasks-calendar.ts) |
 | Declencheur | GitHub Actions, quotidien `0 0 * * *` UTC (2h a Paris en ete) |
 | Secrets | `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` |
-| Lit / ecrit | base Notion "Tasks" (`3438b4b8-8465-80a6-ac08-d30445212e90`) |
-| Calendriers Google | `Deadlines` (`46e7917d...eef7eccf`), `Reminders` (`885a7de4...4f9ddb3a`) |
+| Lit / ecrit | base Notion "Tasks" (config `notion.databases.tasks`) |
+| Calendriers Google | `Deadlines` (config `google.calendars.deadlines`), `Reminders` (config `google.calendars.reminders`) |
 
 ## Fonctionnement
 
@@ -136,7 +136,7 @@ token genere pour Gmail seul **ne suffit pas**. Relancer une fois
 gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/scripts-notion --body "..."
 ```
 
-Les ids des deux calendriers sont codes en dur dans le script, comme les ids
+Les ids des deux calendriers vivent dans `config/instance.json`, comme les ids
 de bases Notion — ce ne sont pas des secrets.
 
 ## Planification : GitHub Actions

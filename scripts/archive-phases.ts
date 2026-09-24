@@ -26,14 +26,15 @@
  */
 
 import "dotenv/config";
+import { instance } from "../config/index.ts";
 
 // --- Config -----------------------------------------------------------
 
-const PHASES_DATABASE_ID = "34a8b4b8-8465-80e7-989e-ed7c68b525fa"; // Phases
-const TASKS_DATABASE_ID = "3438b4b8-8465-80a6-ac08-d30445212e90"; // Tasks
-const DOCS_DATABASE_ID = "3448b4b8-8465-8016-876c-df35377f3d83"; // Docs
+const PHASES_DATABASE_ID = instance.notion.databases.phases.database_id;
+const TASKS_DATABASE_ID = instance.notion.databases.tasks.database_id;
+const DOCS_DATABASE_ID = instance.notion.databases.docs.database_id;
 
-const ARCHIVE_DATABASE_ID = "3d28b4b8-8465-819d-808a-f6bdb4978194"; // Phases archivees
+const ARCHIVE_DATABASE_ID = instance.notion.databases.phasesArchive.database_id;
 
 const NOTION_TOKEN = process.env.NOTION_TOKEN;
 const NOTION_VERSION = "2022-06-28";

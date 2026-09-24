@@ -1,0 +1,42 @@
+{
+  "notion": {
+    "databases": {
+      "tasks": {
+        "database_id": "3438b4b8-8465-80a6-ac08-d30445212e90",
+        "data_source_id": "3438b4b8-8465-805e-9160-000bea5591f4"
+      },
+      "docs": {
+        "database_id": "3448b4b8-8465-8016-876c-df35377f3d83",
+        "data_source_id": "3448b4b8-8465-8024-bdf0-000b094655ef"
+      },
+      "phases": {
+        "database_id": "34a8b4b8-8465-80e7-989e-ed7c68b525fa",
+        "data_source_id": "34a8b4b8-8465-80b1-9991-000b1ef6f0c8"
+      },
+      "phasesArchive": {
+        "database_id": "3d28b4b8-8465-819d-808a-f6bdb4978194",
+        "data_source_id": "3d28b4b8-8465-813d-9863-000bba7b1296"
+      },
+      "rawInputs": {
+        "database_id": "ba36c9eb-2587-49e0-abd3-0d47276511c0",
+        "data_source_id": "bcd21c42-4b1b-4152-b82a-0a6d53330707"
+      },
+      "recurringEvents": {
+        "database_id": "3448b4b8-8465-8052-8152-e45a5b833c0e",
+        "data_source_id": "3448b4b8-8465-8063-8aa8-000b6f824e77"
+      },
+      "planningAline": {
+        "database_id": "8042d9c1-3ea1-481d-a64e-b48d9a138f19",
+        "data_source_id": "0aafd7d8-012f-4d07-b751-1b2da3a7f4c7"
+      }
+    }
+  },
+  "google": {
+    "calendars": {
+      "personal": "adrienagwali@gmail.com",
+      "deadlines": "46e7917d35bd73470e53670206150853ef5d6d7e4c95f86883861f4eeef7eccf@group.calendar.google.com",
+      "reminders": "885a7de408da9ea3756b77cc2bf356eccb6170d0e0a78a003202949a4f9ddb3a@group.calendar.google.com",
+      "planningAline": "affbc5703ccd88c8fd08e946acf97e75cd87896faea2411eda2c7f31c8971b4e@group.calendar.google.com"
+    }
+  }
+}

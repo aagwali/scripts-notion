@@ -6,7 +6,7 @@
 | Declencheur | GitHub Actions, quotidien `0 20 * * *` UTC (22h a Paris en ete) |
 | Secrets | `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` |
 | Lit | Gmail (API), scope `gmail.modify` |
-| Ecrit | base Notion "Raw inputs" (`ba36c9eb-2587-49e0-abd3-0d47276511c0`), label Gmail `Importé` |
+| Ecrit | base Notion "Raw inputs" (config `notion.databases.rawInputs`), label Gmail `Importé` |
 | Calendriers Google | aucun |
 
 ## Role

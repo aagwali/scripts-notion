@@ -22,8 +22,9 @@ Trois etapes, dans cet ordre :
 
 1. **Lire la photo** et en tirer un releve. Seule etape qui demande de
    l'interpretation visuelle, et seule raison d'etre de cette skill.
-2. **Ecrire dans Notion**, base "Planning Aline"
-   (`8042d9c1-3ea1-481d-a64e-b48d9a138f19`). Une ligne par jour.
+2. **Ecrire dans Notion**, base "Planning Aline" (id dans
+   `config/instance.json` → `notion.databases.planningAline`). Une ligne par
+   jour.
 3. **Declencher le workflow GitHub**, qui lance
    `scripts/sync-planning-aline.ts` sur un runner.
 
@@ -86,7 +87,8 @@ valider avant d'ecrire quoi que ce soit.
 
 ## 4. Ecrire dans Notion
 
-Base "Planning Aline", `8042d9c1-3ea1-481d-a64e-b48d9a138f19` :
+Base "Planning Aline" (id dans `config/instance.json` →
+`notion.databases.planningAline`) :
 
 | Propriete | Jour travaille | Rendez-vous |
 |---|---|---|

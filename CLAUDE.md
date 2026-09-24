@@ -81,6 +81,9 @@ Notion la rendrait inopérante : une skill ne se déclenche que depuis
 ## Le dépôt
 
 - `scripts/` — un fichier par flux, TypeScript exécuté par `tsx`.
+- `config/instance.json` — identifiants de l'instance (bases Notion : `database_id`
+  REST et `data_source_id` MCP, calendriers Google), lus par les scripts via
+  `config/index.ts`. Versionné : ce ne sont pas des secrets.
 - `.github/workflows/` — planification GitHub Actions.
 - `docs/scripts/` — un doc par script : ce que fait le code, jamais ce que fait
   le système. Index dans [`docs/scripts/README.md`](docs/scripts/README.md).

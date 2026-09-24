@@ -46,6 +46,9 @@ Le systeme Notion que ces scripts alimentent n'est pas documente ici : voir
 ## Arborescence
 
 ```
+config/
+  instance.json                   # ids des bases Notion et calendriers Google, versionne
+  index.ts                        # loader type de config/instance.json
 scripts/
   import-gmail.ts                 # Gmail -> Notion
   archive-phases.ts               # entretien base Phases
@@ -55,6 +58,7 @@ scripts/
   sync-tasks-calendar.ts          # Tasks -> Google Calendar
   sync-planning-aline.ts          # Planning Aline -> Google Calendar
   google-auth.ts                  # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
+  check-hardcoded-ids.ts          # CI : aucun id hors de config/
 docs/
   scripts/                        # une page par script, plus leur index
   oauth-production.md             # runbook : sortir l'app OAuth du mode Testing
@@ -97,9 +101,12 @@ repetees dans les pages de flux :
 cron, il est declenche a la main (ou par la skill) quand une nouvelle photo
 du tableau blanc arrive.
 
-Les tests (`npm test`) ne couvrent que `reset-recurring-events` : c'est le
-seul script dont le comportement depend d'un arbitrage de dates invisible
-a la relecture.
+`npm test` lance deux choses : les tests de `reset-recurring-events` — seul
+script dont le comportement depend d'un arbitrage de dates invisible a la
+relecture — et `check-hardcoded-ids`, qui echoue si un UUID Notion ou un id de
+calendrier Google apparait ailleurs que dans `config/instance.json`. Le
+workflow [`ci.yml`](.github/workflows/ci.yml) lance `npm test` a chaque push
+et pull request.
 
 Tous les scripts lisent `.env` **relativement au repertoire courant** :
 les lancer depuis la racine du repo, jamais depuis `scripts/`. Les
@@ -111,10 +118,10 @@ raccourcis `npm run` (`import:gmail`, `archive-phases`, `clean-docs`,
 - Node >= 18 (fetch natif)
 - `npm install`
 - Une integration Notion partagee avec les bases utilisees. Chaque page de
-  flux nomme les siennes ; l'ensemble couvre "Raw inputs"
-  (`ba36c9eb-2587-49e0-abd3-0d47276511c0`, code en dur dans le script
-  d'ingestion), "Phases", "Phases archivees", "Tasks", "Docs",
-  "Projects", "Sponsors", "Recurring events" et "Planning Aline".
+  flux nomme les siennes ; l'ensemble couvre "Raw inputs", "Phases", "Phases
+  archivees", "Tasks", "Docs", "Projects", "Sponsors", "Recurring events" et
+  "Planning Aline". Leurs ids vivent dans
+  [`config/instance.json`](config/instance.json).
 - Un client OAuth Google, decrit ci-dessous.
 
 ### Mise en place OAuth Google
@@ -164,8 +171,9 @@ Fichier `.env` local (jamais commite, voir `.gitignore`) :
 Les memes quatre variables sont posees en secrets du repo
 (`Settings > Secrets and variables > Actions`) pour les workflows.
 
-Les ids de bases Notion et de calendriers Google sont codes en dur dans les
-scripts — ce ne sont pas des secrets.
+Les ids de bases Notion et de calendriers Google vivent dans
+[`config/instance.json`](config/instance.json), versionne — ce ne sont pas des
+secrets.
 
 ## Consulter les logs
 

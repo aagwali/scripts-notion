@@ -5,7 +5,7 @@
 | Script | [`scripts/clean-docs.ts`](../../scripts/clean-docs.ts) |
 | Declencheur | GitHub Actions, hebdomadaire `0 3 * * 0` UTC (dimanche 5h a Paris en ete) |
 | Secrets | `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` |
-| Lit / ecrit | base Notion "Docs" (`3448b4b8-8465-8016-876c-df35377f3d83`) |
+| Lit / ecrit | base Notion "Docs" (config `notion.databases.docs`) |
 | Envoie | un email via Gmail API, du compte authentifie vers lui-meme |
 | Calendriers Google | aucun |
 
