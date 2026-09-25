@@ -2,11 +2,11 @@ name: Sync Tasks -> Google Calendar (Notion)
 
 on:
   schedule:
-    # 00:00 UTC -> 02:00 Europe/Paris en ete (CEST), 01:00 en hiver (CET).
-    # L'heure exacte est sans consequence : le script retient les taches
-    # modifiees dans les 30 dernieres heures, fenetre large devant les 24h
-    # entre deux runs. Un run manque ou retarde est rattrape par le suivant.
-    - cron: "0 0 * * *"
+    # 05:00 UTC -> 07:00 Europe/Paris en ete (CEST), 06:00 en hiver (CET).
+    # Deux heures apres la tache planifiee d'ingestion (03:00 UTC), qui pose
+    # Deadline et Reminder sur les Tasks : ses dates partent dans l'agenda le
+    # matin meme. La fenetre de 30h rattrape un run manque ou retarde.
+    - cron: "0 5 * * *"
   workflow_dispatch: {}
 
 jobs:

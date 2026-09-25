@@ -26,7 +26,7 @@ une tache planifiee claude.ai, documentee sur Notion.
 
 | Doc | Script | Declencheur |
 |---|---|---|
-| [Tasks -> Google Calendar](sync-tasks-calendar.md) | `sync-tasks-calendar.ts` | Actions, quotidien 2h |
+| [Tasks -> Google Calendar](sync-tasks-calendar.md) | `sync-tasks-calendar.ts` | Actions, quotidien 7h |
 | [Planning d'Aline](sync-planning-aline.md) | `sync-planning-aline.ts` | a la demande, aucun cron |
 
 ## Entretien des bases Notion
