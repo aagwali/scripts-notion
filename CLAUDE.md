@@ -57,6 +57,11 @@ Notion la rendrait inopérante : une skill ne se déclenche que depuis
 - **Rollup de rollup refusé.** Parade : `prop("Relation").map(current.prop("Prop")).sum()`.
 - **Relations mono-cible** : pas de relation polymorphe. D'où la double relation
   `Task` / `Event` sur Pomodoros, et `Phase` / `Phase archivée` sur Tasks et Docs.
+- **`query_data_sources` soumis à enveloppe.** Sur le plan gratuit, l'outil MCP de
+  requête sur une base puise dans une enveloppe d'usage partagée par le workspace ;
+  épuisée, il renvoie `plan_required`. Les sessions Claude Code interactives y puisent
+  aussi : lire les bases par `fetch`, `search` ou l'API REST (identifiant API
+  `api.notion.com` de l'environnement cloud `Default`, intégration en lecture seule).
 - **Formules non lisibles via MCP** : le code d'une formule n'est pas exposé en
   lecture. La section *Formules* de la référence d'architecture est la seule
   source consultable par un agent.
