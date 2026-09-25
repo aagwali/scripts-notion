@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Script | [`scripts/sync-tasks-calendar.ts`](../../scripts/sync-tasks-calendar.ts) |
-| Declencheur | GitHub Actions, quotidien `0 0 * * *` UTC (2h a Paris en ete) |
+| Declencheur | GitHub Actions, quotidien `0 5 * * *` UTC (7h a Paris en ete) |
 | Secrets | `NOTION_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` |
 | Lit / ecrit | base Notion "Tasks" (config `notion.databases.tasks`) |
 | Calendriers Google | `Deadlines` (config `google.calendars.deadlines`), `Reminders` (config `google.calendars.reminders`) |
@@ -143,9 +143,12 @@ de bases Notion — ce ne sont pas des secrets.
 
 Workflow : [`.github/workflows/sync-tasks-calendar.yml`](../../.github/workflows/sync-tasks-calendar.yml)
 
-- Declenchement quotidien a `00:00` UTC (2h a Paris en ete). Voir les
-  [reserves sur les crons](../../README.md#planification). L'heure exacte est
-  sans consequence : la fenetre de 30h absorbe un run manque ou retarde.
+- Declenchement quotidien a `05:00` UTC (7h a Paris en ete). Voir les
+  [reserves sur les crons](../../README.md#planification). L'heure suit une
+  dependance : la tache planifiee d'ingestion (documentee sur Notion) passe a
+  `03:00` UTC et pose `Deadline` et `Reminder` sur les Tasks qu'elle cree.
+  Deux heures plus tard, ses dates partent dans l'agenda le matin meme. La
+  fenetre de 30h absorbe un run manque ou retarde.
 - Declenchement manuel :
   ```
   gh workflow run "Sync Tasks -> Google Calendar (Notion)" --repo aagwali/scripts-notion

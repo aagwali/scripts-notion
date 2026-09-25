@@ -70,15 +70,15 @@ CLAUDE.md                         # identite du systeme, frontiere depot / Notio
 
 ## Planification
 
-Tout tourne de nuit, dans cet ordre (heures de Paris) :
+Tout tourne entre le soir et le matin, dans cet ordre (heures de Paris) :
 
 | Heure | Script | Declencheur | Cron |
 |---|---|---|---|
 | 22h | `import-gmail` | GitHub Actions | `0 20 * * *` UTC |
-| 1h ou 2h | `reset-recurring-events` | GitHub Actions | `0 0 * * *` UTC |
-| 2h | `sync-tasks-calendar` | GitHub Actions | `0 0 * * *` UTC |
-| dimanche 5h | `clean-docs` | GitHub Actions | `0 3 * * 0` UTC |
+| 2h | `reset-recurring-events` | GitHub Actions | `0 0 * * *` UTC |
 | lundi 4h | `archive-phases` | GitHub Actions | `0 2 * * 1` UTC |
+| dimanche 5h | `clean-docs` | GitHub Actions | `0 3 * * 0` UTC |
+| 7h | `sync-tasks-calendar` | GitHub Actions | `0 5 * * *` UTC |
 
 Trois reserves valent pour **tous** les workflows GitHub, et ne sont pas
 repetees dans les pages de flux :
@@ -91,9 +91,11 @@ repetees dans les pages de flux :
   lui, et il le calcule dans `Europe/Paris`.
 - **Un run planifie peut etre retarde** de plusieurs minutes a plusieurs
   heures selon la charge de l'infra GitHub. L'etalement ecrit dans les
-  crons n'est pas celui qui est obtenu — l'ordre du tableau a surtout une
-  valeur de lisibilite, aucun script ne depend de l'heure de passage d'un
-  autre.
+  crons n'est pas celui qui est obtenu. Aucun script ne depend de l'heure de
+  passage d'un autre script. Une seule dependance fixe une heure :
+  `sync-tasks-calendar` passe deux heures apres la tache planifiee
+  d'ingestion (documentee sur Notion, 03:00 UTC), qui pose les dates qu'il
+  projette.
 - **Le cron ne se declenche que sur la branche par defaut** (`main`) —
   pusher ailleurs ne suffit pas.
 
