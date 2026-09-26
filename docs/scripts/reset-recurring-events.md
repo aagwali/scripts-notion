@@ -63,8 +63,8 @@ francais, comme celles de `Target session`.
 - Vide : jamais traite, mais **signale dans le log et le run sort en erreur** —
   un evenement sans `Recurrence` est une erreur de saisie, pas un choix.
 
-`Recurrence` porte seule cette responsabilite, et `Tags` reste purement
-metier : aucun script ne le lit. Un tag decrit la nature d'une tache, pas une
+`Recurrence` porte seule cette responsabilite, et `Type` reste purement
+metier : aucun script ne le lit. Un type decrit la nature d'une serie, pas une
 regle de planification, et ne sait pas exprimer « hebdo le mardi ».
 
 ## Arbitrage de `Series`

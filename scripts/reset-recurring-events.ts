@@ -12,10 +12,9 @@
  * arbitre la journee qui vient de s'ecouler : le Done qu'il lit est le clic
  * de l'occurrence precedente, jamais celui du jour qui commence.
  *
- * La propriete Recurrence pilote seule l'eligibilite. Le tag "Sur demande"
- * portait ce role auparavant : il decrivait la nature d'une tache, pas une
- * regle de planification, et ne savait pas exprimer "hebdo le mardi". Les
- * Tags redeviennent donc purement metier.
+ * La propriete Recurrence pilote seule l'eligibilite. Type (Dashboard,
+ * Reminder) decrit la nature d'une serie, pas une regle de planification :
+ * le script ne le lit pas.
  *
  *   Quotidien   : traite tous les jours
  *   Hebdo       : traite uniquement les jours coches dans Weekday
