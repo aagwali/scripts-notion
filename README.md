@@ -15,13 +15,18 @@ chaque dimanche les journaux de run et input briefs relus de la base "Docs".
 
 **Projection vers Google Calendar.** Un script reporte les dates
 `Deadline` et `Reminder` de la base "Tasks" dans deux calendriers Google
-dedies, et retire de l'agenda ce qui a disparu de Notion.
+dedies, et retire de l'agenda ce qui a disparu de Notion ou dont la tache est
+close.
+
+**Report Post-it.** Un script ramene chaque matin sur la journee les
+evenements du calendrier Google "Post-it" restes dans le passe : une action
+eclair non faite revient jusqu'a ce qu'on la supprime.
 
 **Planning d'Aline.** Un dernier script projette vers Google Calendar les
 jours travailles de la base "Planning Aline", elle-meme alimentee par une
 tache Claude qui lit la photo d'un tableau blanc.
 
-## Les six flux
+## Les sept flux
 
 Chaque flux a sa page : fonctionnement, choix de conception, lancement,
 planification, logs et pannes propres.
@@ -33,6 +38,7 @@ planification, logs et pannes propres.
 | [Reset des evenements recurrents](docs/scripts/reset-recurring-events.md) | reamorce "Recurring events" chaque nuit | GitHub Actions, quotidien |
 | [Tasks -> Google Calendar](docs/scripts/sync-tasks-calendar.md) | projette `Deadline` / `Reminder` | GitHub Actions, quotidien |
 | [Planning d'Aline](docs/scripts/sync-planning-aline.md) | projette les jours travailles | a la demande |
+| [Report Post-it](docs/scripts/roll-post-it.md) | ramene sur aujourd'hui les Post-it non faits | GitHub Actions, quotidien |
 | [Nettoyage de la base Docs](docs/scripts/clean-docs.md) | corbeille les logs et input briefs relus | GitHub Actions, hebdomadaire |
 
 Index complet et canevas commun : [`docs/scripts/README.md`](docs/scripts/README.md).
@@ -57,6 +63,8 @@ scripts/
   clean-docs.ts                   # entretien base Docs
   sync-tasks-calendar.ts          # Tasks -> Google Calendar
   sync-planning-aline.ts          # Planning Aline -> Google Calendar
+  roll-post-it.ts                 # report quotidien du calendrier Post-it
+  roll-post-it.test.ts            # tests de la frontiere "passe", sans appel Google
   google-auth.ts                  # utilitaire : genere GOOGLE_REFRESH_TOKEN, a lancer une fois
   check-hardcoded-ids.ts          # CI : aucun id hors de config/
 docs/
@@ -78,6 +86,7 @@ Tout tourne entre le soir et le matin, dans cet ordre (heures de Paris) :
 | 2h | `reset-recurring-events` | GitHub Actions | `0 0 * * *` UTC |
 | lundi 4h | `archive-phases` | GitHub Actions | `0 2 * * 1` UTC |
 | dimanche 5h | `clean-docs` | GitHub Actions | `0 3 * * 0` UTC |
+| 6h | `roll-post-it` | GitHub Actions | `0 4 * * *` UTC |
 | 7h | `sync-tasks-calendar` | GitHub Actions | `0 5 * * *` UTC |
 
 Trois reserves valent pour **tous** les workflows GitHub, et ne sont pas
@@ -103,9 +112,9 @@ repetees dans les pages de flux :
 cron, il est declenche a la main (ou par la skill) quand une nouvelle photo
 du tableau blanc arrive.
 
-`npm test` lance deux choses : les tests de `reset-recurring-events` — seul
-script dont le comportement depend d'un arbitrage de dates invisible a la
-relecture — et `check-hardcoded-ids`, qui echoue si un UUID Notion ou un id de
+`npm test` lance trois choses : les tests de `reset-recurring-events` et de
+`roll-post-it` — les deux scripts dont le comportement depend d'un arbitrage
+de dates invisible a la relecture — et `check-hardcoded-ids`, qui echoue si un UUID Notion ou un id de
 calendrier Google apparait ailleurs que dans `config/instance.json`. Le
 workflow [`ci.yml`](.github/workflows/ci.yml) lance `npm test` a chaque push
 et pull request.
@@ -113,7 +122,7 @@ et pull request.
 Tous les scripts lisent `.env` **relativement au repertoire courant** :
 les lancer depuis la racine du repo, jamais depuis `scripts/`. Les
 raccourcis `npm run` (`import:gmail`, `archive-phases`, `clean-docs`,
-`google-auth`, `sync-tasks-calendar`, `sync-planning-aline`) s'en chargent.
+`google-auth`, `sync-tasks-calendar`, `sync-planning-aline`, `roll-post-it`) s'en chargent.
 
 ## Prerequis communs
 

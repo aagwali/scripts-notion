@@ -1,0 +1,29 @@
+name: Report Post-it (Google Calendar)
+
+on:
+  schedule:
+    # 04:00 UTC -> 06:00 Europe/Paris en ete (CEST), 05:00 en hiver (CET).
+    # Avant le reveil : les Post-it non faits de la veille sont deja sur la
+    # journee quand on l'ouvre. Aucune dependance avec un autre flux.
+    - cron: "0 4 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  roll:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Report Post-it
+        run: npx tsx scripts/roll-post-it.ts
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}

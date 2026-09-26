@@ -15,6 +15,12 @@
  *   pas de date, id  suppression de l'evenement et de l'id
  *   ni l'un ni l'autre  rien
  *
+ * Une tache close (Status dans CLOSED_STATUSES) est traitee comme si elle
+ * n'avait pas de date : ni le preavis ni l'echeance d'une tache finie ne
+ * servent plus a rien dans l'agenda. Ses dates restent intactes dans
+ * Notion ; seuls l'evenement et l'id disparaissent. Rouverte, la tache
+ * retrouve ses evenements au run suivant.
+ *
  * Perimetre d'un run : les taches modifiees dans les LAST_EDITED_WINDOW_HOURS
  * dernieres heures. La fenetre depasse largement l'intervalle entre deux runs
  * quotidiens, de sorte qu'un run manque soit rattrape par le suivant.
@@ -74,6 +80,10 @@ const TIMEZONE = "Europe/Paris";
 const LAST_EDITED_WINDOW_HOURS = 30;
 
 const DRY_RUN = process.argv.includes("--dry-run");
+
+/** Valeurs de la propriete select "Status" qui retirent la tache de l'agenda. */
+const STATUS_PROP = "Status";
+const CLOSED_STATUSES = new Set(["Done", "Canceled"]);
 
 const THROTTLE_MS = 350; // limite Notion ~3 req/s
 const MAX_RETRIES = 4;
@@ -182,6 +192,10 @@ function titleOf(page: NotionPage, prop = "Name"): string {
 function dayOf(page: NotionPage, prop: string): string | null {
   const start = page.properties[prop]?.date?.start;
   return typeof start === "string" ? start.slice(0, 10) : null;
+}
+
+function isClosed(page: NotionPage): boolean {
+  return CLOSED_STATUSES.has(page.properties[STATUS_PROP]?.select?.name);
 }
 
 function textOf(page: NotionPage, prop: string): string | null {
@@ -340,7 +354,8 @@ type Action = "created" | "updated" | "deleted" | "recreated" | "untouched";
  * Retourne l'action effectuee, pour le decompte final.
  */
 async function syncSlot(page: NotionPage, slot: Slot, name: string): Promise<Action> {
-  const day = dayOf(page, slot.dateProp);
+  // Une tache close se traite comme une tache sans date.
+  const day = isClosed(page) ? null : dayOf(page, slot.dateProp);
   const eventId = textOf(page, slot.eventIdProp);
   const summary = `[${slot.label}] ${name}`;
   const url = page.url;
@@ -348,7 +363,7 @@ async function syncSlot(page: NotionPage, slot: Slot, name: string): Promise<Act
   if (day === null && eventId === null) return "untouched";
 
   if (day === null) {
-    // Date effacee dans Notion : l'evenement n'a plus de raison d'etre.
+    // Date effacee, ou tache close : l'evenement n'a plus de raison d'etre.
     if (DRY_RUN) {
       console.log(`  [dry-run] ${slot.label} : suppression de l'evenement ${eventId}`);
       return "deleted";

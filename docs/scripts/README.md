@@ -28,6 +28,7 @@ une tache planifiee claude.ai, documentee sur Notion.
 |---|---|---|
 | [Tasks -> Google Calendar](sync-tasks-calendar.md) | `sync-tasks-calendar.ts` | Actions, quotidien 7h |
 | [Planning d'Aline](sync-planning-aline.md) | `sync-planning-aline.ts` | a la demande, aucun cron |
+| [Report Post-it](roll-post-it.md) | `roll-post-it.ts` | Actions, quotidien 6h |
 
 ## Entretien des bases Notion
 

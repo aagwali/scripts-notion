@@ -29,6 +29,13 @@ nulle part. Pour chaque tache et chaque couple (date, id) :
 | pas de date, id | suppression de l'evenement **et** de l'id |
 | ni date ni id | rien |
 
+Une tache close (`Status` = `Done` ou `Canceled`) se traite comme une tache
+sans date : son evenement est supprime et son id vide, pour la deadline comme
+pour le reminder. Ni le preavis ni l'echeance d'une tache finie ne servent
+plus a rien dans l'agenda. Les dates, elles, restent intactes dans Notion :
+rouverte, la tache retrouve ses evenements au run suivant. Clore une tache la
+modifie, elle entre donc d'elle-meme dans le perimetre du run.
+
 Deux garde-fous s'ajoutent au tableau. Un evenement supprime a la main dans
 l'agenda alors que la date existe toujours (`404`/`410` au moment du PATCH) est
 **recree**, et son nouvel id reecrit : Notion fait foi. Et si la creation
@@ -91,6 +98,9 @@ l'id, precisement pour que ce trou soit refermable a la main.
 
 ## Rollback
 
+- **Evenements retires a tort a la cloture** : rouvrir la tache (statut
+  autre que `Done` / `Canceled`) ; le run suivant les recree si la date est a
+  venir.
 - **Evenements crees a tort** : les supprimer dans Google Calendar et vider la
   propriete `Google Event Id (...)` correspondante dans Notion. Vider l'id
   sans supprimer l'evenement laisse un orphelin definitif.
@@ -168,8 +178,9 @@ gh run view <run-id> --repo aagwali/scripts-notion --log
   sans modifier le script ne produit pas qu'une erreur : le script ne relirait
   plus aucun id et **recreerait tous les evenements en double** au run
   suivant. Toute harmonisation de ces noms doit donc modifier le depot
-  d'abord, ou les deux dans la meme fenetre. Meme remarque pour `Deadline` et
-  `Reminder`.
+  d'abord, ou les deux dans la meme fenetre. Meme remarque pour `Deadline`,
+  `Reminder` et `Status`, et pour les valeurs `Done` / `Canceled` : une option
+  renommee laisserait les taches closes dans l'agenda.
 - **Une tache modifiee il y a plus de 30h et jamais retouchee depuis
   n'est plus vue.** Une date posee puis restee intacte pendant que le
   workflow etait casse plusieurs jours ne se rattrape pas toute seule : il
