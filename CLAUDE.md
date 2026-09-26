@@ -82,6 +82,10 @@ Notion la rendrait inopérante : une skill ne se déclenche que depuis
   attendre l'arbitrage.
 - **Code et doc en désaccord** : le signaler, ne trancher ni dans un sens ni dans
   l'autre. L'arbitrage revient à l'utilisateur.
+- **Réponses courtes, sans exception.** Droit au but : environ 5 lignes par sujet
+  traité. Pas de préambule, pas de reformulation de la question, pas de
+  récapitulatif au-delà d'une ligne par action faite. Tout complément (détail,
+  alternative, justification) se propose en une ligne, jamais d'emblée.
 
 ## Le dépôt
 
