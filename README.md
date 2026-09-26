@@ -11,7 +11,7 @@ captures ecrites hors depot.
 **Entretien des bases.** Trois autres scripts, sans rapport avec les
 emails, sortent les phases terminees de la base "Phases", remettent a
 zero chaque nuit la base "Recurring events", et mettent a la corbeille
-chaque dimanche les journaux de run et digests relus de la base "Docs".
+chaque dimanche les journaux de run et input briefs relus de la base "Docs".
 
 **Projection vers Google Calendar.** Un script reporte les dates
 `Deadline` et `Reminder` de la base "Tasks" dans deux calendriers Google
@@ -33,7 +33,7 @@ planification, logs et pannes propres.
 | [Reset des evenements recurrents](docs/scripts/reset-recurring-events.md) | reamorce "Recurring events" chaque nuit | GitHub Actions, quotidien |
 | [Tasks -> Google Calendar](docs/scripts/sync-tasks-calendar.md) | projette `Deadline` / `Reminder` | GitHub Actions, quotidien |
 | [Planning d'Aline](docs/scripts/sync-planning-aline.md) | projette les jours travailles | a la demande |
-| [Nettoyage de la base Docs](docs/scripts/clean-docs.md) | corbeille les logs et digests relus | GitHub Actions, hebdomadaire |
+| [Nettoyage de la base Docs](docs/scripts/clean-docs.md) | corbeille les logs et input briefs relus | GitHub Actions, hebdomadaire |
 
 Index complet et canevas commun : [`docs/scripts/README.md`](docs/scripts/README.md).
 
@@ -133,8 +133,8 @@ Detail complet, pieges du flux loopback et depannage :
 
 Un **seul** client OAuth couvre Gmail et Calendar : `google-auth.ts`
 demande les deux scopes (`gmail.modify` + `calendar.events`) en une fois,
-et le refresh token obtenu sert a tous les flux Google du repo. Le digest
-de `clean-docs` part avec le meme `gmail.modify`, qui couvre
+et le refresh token obtenu sert a tous les flux Google du repo. Le
+recapitulatif de `clean-docs` part avec le meme `gmail.modify`, qui couvre
 `messages.send`.
 
 1. Dans [console.cloud.google.com](https://console.cloud.google.com) :

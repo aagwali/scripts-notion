@@ -58,7 +58,7 @@ A verifier avant de chercher un bug au mauvais endroit :
   "Raw inputs" (`Channel = Vocal`), sans passer par le depot.
 - **La base "Meetings"** n'est ecrite par aucun script d'ici. Elle l'est par la
   tache planifiee claude.ai, depuis les reunions dictees en capture vocale.
-- **La classification** (Task / Doc / digest), la pose du label `Traité`, les
+- **La classification** (Task / Doc / input brief), la pose du label `Traité`, les
   labels metier : tache planifiee claude.ai, pas ce depot. L'ingestion ne pose
   que `Importé`.
 - **Le calendrier `EDF`** est alimente a la main. Un script d'import est
