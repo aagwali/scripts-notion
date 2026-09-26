@@ -82,6 +82,12 @@ Notion la rendrait inopérante : une skill ne se déclenche que depuis
   attendre l'arbitrage.
 - **Code et doc en désaccord** : le signaler, ne trancher ni dans un sens ni dans
   l'autre. L'arbitrage revient à l'utilisateur.
+- **Cinq lignes par sujet.** Une réponse tient en environ cinq lignes par sujet
+  traité : c'est un ordre de grandeur, pas un format — prose ou liste selon ce
+  qui se lit le mieux.
+- **Détails sur demande.** Ce qui dépasse ce volume ne s'écrit pas d'emblée : le
+  proposer en une ligne (« je peux détailler X ») et laisser l'utilisateur
+  décider.
 
 ## Le dépôt
 
