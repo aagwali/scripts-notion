@@ -12,7 +12,7 @@
 ## Le probleme
 
 Une tache aval depose chaque jour deux pages dans la base "Docs" : un journal
-de run (`Type = Log`) et un digest email (`Type = Digest email`). Relus le
+de run (`Type = Log`) et un input brief (`Type = Input brief`). Relus le
 lendemain, ils n'ont plus de lecteur, mais ils continuent de s'empiler —
 environ 60 pages par mois, qui noient les vrais documents de la base (specs,
 procedures, references) dans les vues et dans le selecteur de la relation
@@ -24,7 +24,7 @@ Un doc est retenu s'il remplit les **trois** conditions :
 
 | Condition | Valeur |
 |---|---|
-| `Type` | `Log` **ou** `Digest email` |
+| `Type` | `Log` **ou** `Input brief` |
 | `Status` | `Reviewed` |
 | Age | strictement plus de 7 jours |
 
@@ -43,7 +43,7 @@ La base porte pourtant une propriete `Date`. Elle n'est pas utilisee, pour
 trois raisons :
 
 - elle est **absente sur la moitie de ces pages** — la plupart des
-  `Digest email` n'en portent pas. S'y fier laisserait ces pages sur place
+  `Input brief` n'en portent pas. S'y fier laisserait ces pages sur place
   indefiniment, sans que rien ne le signale ;
 - elle se saisit a la main, donc une faute de frappe peut avancer une
   suppression ;
@@ -63,14 +63,14 @@ et serait comptee un jour trop jeune.
 Le script fait `archived: true` : la page part a la **corbeille Notion**, qui
 la conserve **30 jours** avant suppression definitive. C'est la vraie fenetre
 de rollback, la meme que pour [l'archivage des phases](archive-phases.md). Le
-digest liste les liens `https://app.notion.com/p/<id>`, qui restent valables
+recapitulatif liste les liens `https://app.notion.com/p/<id>`, qui restent valables
 une fois la page en corbeille.
 
 Rien n'est recopie ailleurs : contrairement aux phases, ces pages n'ont pas de
 relation entrante a preserver, et leur contenu est par nature perissable.
 Passe 30 jours il n'y a plus rien a restaurer — c'est le but.
 
-## Le digest
+## Le recapitulatif
 
 Un email part **a chaque run**, du compte Google authentifie vers lui-meme.
 L'adresse n'est pas configuree : le script la lit sur
@@ -86,7 +86,7 @@ corbeille`, suffixe de `, M echec(s)` si une mise a la corbeille a rate — ce
 qui evite l'encodage RFC 2047 des en-tetes. Le corps, qui porte des titres
 accentues, part en base64 UTF-8.
 
-Si l'envoi echoue **apres** le nettoyage, le digest complet est deverse dans
+Si l'envoi echoue **apres** le nettoyage, le recapitulatif complet est deverse dans
 le log du run et le script sort en erreur : la trace n'est jamais perdue
 silencieusement.
 
@@ -100,7 +100,7 @@ corbeille ne remonte plus dans la requete, il n'y a donc rien a re-supprimer
 et rien a re-creer.
 
 **Mais chaque rejeu envoie un email de plus.** Un second run le meme dimanche
-enverra un digest « 0 doc ». Sans gravite, mais c'est le seul effet observable
+enverra un recapitulatif « 0 doc ». Sans gravite, mais c'est le seul effet observable
 d'un rejeu.
 
 Le nettoyage et l'envoi ne sont pas transactionnels : le nettoyage a lieu
@@ -110,8 +110,8 @@ il ne fait que reporter la trace dans le log.
 ## Rollback
 
 - **Restaurer un doc supprime a tort** : la corbeille Notion, dans les 30
-  jours. Les liens du digest restent valables sur une page en corbeille.
-- **Retrouver ce qui a ete supprime** : le digest email, qui n'expire pas,
+  jours. Les liens du recapitulatif restent valables sur une page en corbeille.
+- **Retrouver ce qui a ete supprime** : le recapitulatif email, qui n'expire pas,
   plutot que le log du run, qui expire a 90 jours.
 - Passe 30 jours, aucune restauration n'est possible — c'est l'objectif du
   script, pas un defaut.
@@ -124,7 +124,7 @@ npx tsx scripts/clean-docs.ts             # pour de vrai
 ```
 
 Le `--dry-run` affiche le perimetre doc par doc (garde / corbeille) puis
-**l'apercu exact du digest** qui serait envoye.
+**l'apercu exact du recapitulatif** qui serait envoye.
 
 ## Planification : GitHub Actions
 
@@ -142,7 +142,7 @@ Workflow : [`.github/workflows/clean-docs.yml`](../../.github/workflows/clean-do
 
 ## Logs
 
-La trace de reference est le **digest email**, pas le log : il arrive chaque
+La trace de reference est le **recapitulatif email**, pas le log : il arrive chaque
 dimanche dans la boite Gmail et n'expire pas. Le log du run reprend la meme
 information, plus le detail des docs gardes et leur age.
 
@@ -152,11 +152,11 @@ gh run view <run-id> --repo aagwali/scripts-notion --log
 ```
 
 Le workflow sort en erreur si une mise a la corbeille echoue, ou si l'envoi du
-digest echoue — dans ce dernier cas le digest complet est dans le log.
+recapitulatif echoue — dans ce dernier cas le recapitulatif complet est dans le log.
 
 ## Limites connues
 
-- **Un doc `Log` ou `Digest email` jamais relu n'est jamais nettoye.** C'est
+- **Un doc `Log` ou `Input brief` jamais relu n'est jamais nettoye.** C'est
   le garde-fou voulu, mais il signifie qu'un oubli de validation fait grossir
   la base indefiniment. Rien ne le signale aujourd'hui.
 - **Le nettoyage depend du `Type`**, qui est saisi par la tache aval. Un

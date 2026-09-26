@@ -1,9 +1,9 @@
 #!/usr/bin/env -S npx tsx
 /**
  * Nettoyage de la base Notion "Docs" : mise a la corbeille des journaux de run
- * et des digests email relus, puis envoi d'un recapitulatif par email.
+ * et des input briefs relus, puis envoi d'un recapitulatif par email.
  *
- * Perimetre : Type = "Log" ou "Digest email", Status = "Reviewed", plus vieux
+ * Perimetre : Type = "Log" ou "Input brief", Status = "Reviewed", plus vieux
  * que 7 jours. Ces deux types sont produits chaque jour par une tache aval ;
  * une fois relus ils n'ont plus de lecteur, et leur accumulation noie les
  * vrais documents de la base dans les vues et les selecteurs. Les autres types
@@ -12,10 +12,10 @@
  *
  * La suppression est une mise a la corbeille Notion, pas un effacement :
  * Notion conserve 30 jours, ce qui est la vraie fenetre de rollback. Le
- * digest liste les liens vers les pages en corbeille, et fait office de trace
+ * recapitulatif liste les liens vers les pages en corbeille, et fait office de trace
  * durable — les logs GitHub Actions, eux, expirent a 90 jours.
  *
- * Le digest part a chaque run, meme vide : recevoir "0 doc" chaque dimanche
+ * Le recapitulatif part a chaque run, meme vide : recevoir "0 doc" chaque dimanche
  * dit que le job a tourne, ce qu'un silence ne dit pas.
  *
  * Usage :
@@ -47,7 +47,7 @@ const TYPE_PROP = "Type";
 const STATUS_PROP = "Status";
 
 /** Seuls ces docs sont nettoyes. Tout autre Type ou Status est hors perimetre. */
-const CLEANED_TYPES = ["Log", "Digest email"];
+const CLEANED_TYPES = ["Log", "Input brief"];
 const CLEANED_STATUS = "Reviewed";
 
 /** Age minimum, en jours, pour qu'un doc soit retenu. Strictement superieur. */
@@ -161,8 +161,8 @@ function daysBetween(from: string, to: string): number {
 /**
  * L'age se lit sur created_time, pas sur la propriete "Date".
  *
- * "Date" est absente sur la moitie de ces pages — la plupart des "Digest
- * email" n'en portent pas — et se saisit a la main, donc une faute de frappe
+ * "Date" est absente sur la moitie de ces pages — la plupart des "Input
+ * brief" n'en portent pas — et se saisit a la main, donc une faute de frappe
  * peut avancer une suppression. created_time est toujours present, pose par
  * Notion, non modifiable. Sur les pages qui ont les deux, les valeurs
  * coincident : la propriete n'apportait rien.
@@ -222,7 +222,7 @@ async function gmail<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /**
- * Le digest part du compte authentifie vers lui-meme : aucune adresse a
+ * Le recapitulatif part du compte authentifie vers lui-meme : aucune adresse a
  * configurer, et rien de personnel n'entre dans le depot.
  */
 async function ownAddress(): Promise<string> {
@@ -234,7 +234,7 @@ async function ownAddress(): Promise<string> {
  * Sujet volontairement en ASCII : cela evite l'encodage RFC 2047 des en-tetes.
  * Le corps, lui, porte des titres accentues — d'ou le base64 en UTF-8.
  */
-async function sendDigest(subject: string, body: string): Promise<void> {
+async function sendRecap(subject: string, body: string): Promise<void> {
   const to = await ownAddress();
 
   const mime = [
@@ -253,7 +253,7 @@ async function sendDigest(subject: string, body: string): Promise<void> {
     body: JSON.stringify({ raw: Buffer.from(mime, "utf8").toString("base64url") }),
   });
 
-  console.log(`Digest envoye a ${to}.`);
+  console.log(`Recapitulatif envoye a ${to}.`);
 }
 
 // --- Nettoyage ------------------------------------------------------------
@@ -272,7 +272,7 @@ interface Result extends Candidate {
   error?: string;
 }
 
-function formatDigest(results: Result[], today: string): { subject: string; body: string } {
+function formatRecap(results: Result[], today: string): { subject: string; body: string } {
   const trashed = results.filter((r) => r.trashed);
   const failed = results.filter((r) => !r.trashed);
 
@@ -379,7 +379,7 @@ async function main(): Promise<void> {
 
     if (DRY_RUN) {
       console.log(`  [dry-run] ${day} (${age} j) [${type}] "${name}" ${page.id} -> corbeille`);
-      // Compte comme un succes pour que l'apercu du digest, plus bas, montre
+      // Compte comme un succes pour que l'apercu du recapitulatif, plus bas, montre
       // exactement ce qui serait envoye.
       results.push({ ...candidate, trashed: true });
       continue;
@@ -399,22 +399,22 @@ async function main(): Promise<void> {
     }
   }
 
-  const { subject, body } = formatDigest(results, today);
+  const { subject, body } = formatRecap(results, today);
 
   if (DRY_RUN) {
-    console.log(`\n[dry-run] digest non envoye :\n\n${subject}\n\n${body}`);
+    console.log(`\n[dry-run] recapitulatif non envoye :\n\n${subject}\n\n${body}`);
     return;
   }
 
   const failed = results.filter((r) => !r.trashed).length;
 
   try {
-    await sendDigest(subject, body);
+    await sendRecap(subject, body);
   } catch (err) {
     // Le nettoyage est deja fait : plutot que de perdre la trace, on la deverse
     // dans le log du run, seul endroit ou elle subsiste jusqu'au correctif.
-    console.error(`\nEnvoi du digest en echec : ${(err as Error).message}`);
-    console.error(`\n--- digest non envoye ---\n${subject}\n\n${body}\n---`);
+    console.error(`\nEnvoi du recapitulatif en echec : ${(err as Error).message}`);
+    console.error(`\n--- recapitulatif non envoye ---\n${subject}\n\n${body}\n---`);
     process.exit(1);
   }
 

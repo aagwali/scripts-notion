@@ -23,7 +23,7 @@ du repo ([import-gmail](import-gmail.md),
 | `gmail.modify` | lecture, pose et retrait de labels, corbeille, **envoi** | la suppression definitive |
 | `calendar.events` | lecture, ecriture, suppression d'evenements | creer ou supprimer un calendrier |
 
-`gmail.modify` couvre `messages.send` : le digest de `clean-docs` part avec ce
+`gmail.modify` couvre `messages.send` : le recapitulatif de `clean-docs` part avec ce
 meme scope, sans re-auth. Et `calendar.events` ne permettant pas de creer un
 calendrier, les calendriers dedies (`Deadlines`, `Reminders`,
 `Planning Aline`) sont crees a la main dans l'UI Google.
