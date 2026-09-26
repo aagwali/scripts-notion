@@ -29,6 +29,7 @@ export interface InstanceConfig {
       deadlines: string;
       reminders: string;
       planningAline: string;
+      postIt: string;
     };
   };
 }
