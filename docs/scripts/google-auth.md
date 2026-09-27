@@ -10,11 +10,11 @@
 | Calendriers Google | aucun |
 
 Utilitaire de bootstrap, pas un flux. Il ne lit ni n'ecrit aucune donnee
-metier : il produit le refresh token dont dependent les quatre scripts Google
+metier : il produit le refresh token dont dependent les cinq scripts Google
 du repo ([import-gmail](import-gmail.md),
 [sync-tasks-calendar](sync-tasks-calendar.md),
-[sync-planning-aline](sync-planning-aline.md) et
-[clean-docs](clean-docs.md)).
+[sync-planning-aline](sync-planning-aline.md),
+[roll-post-it](roll-post-it.md) et [clean-docs](clean-docs.md)).
 
 ## Un seul client, un seul token, deux scopes
 
@@ -26,7 +26,7 @@ du repo ([import-gmail](import-gmail.md),
 `gmail.modify` couvre `messages.send` : le recapitulatif de `clean-docs` part avec ce
 meme scope, sans re-auth. Et `calendar.events` ne permettant pas de creer un
 calendrier, les calendriers dedies (`Deadlines`, `Reminders`,
-`Planning Aline`) sont crees a la main dans l'UI Google.
+`Planning Aline`, `Post-it`) sont crees a la main dans l'UI Google.
 
 **Un refresh token porte les scopes accordes au moment de son emission.** Il
 ne s'etend jamais tout seul : ajouter un scope dans `SCOPE` impose de relancer
@@ -51,7 +51,7 @@ token.
 Le flux « device code » n'est **pas** utilisable ici : Google le refuse pour
 les scopes Gmail (`Invalid device flow scope`).
 
-Deux details qui ont coute du temps, et qu'il ne faut pas « simplifier » :
+Deux details a ne pas « simplifier » :
 
 - Le `redirect_uri` est fige des la mise en ecoute et conserve dans une
   variable de portee externe. Il doit etre **strictement identique** dans la
@@ -114,10 +114,9 @@ aucune donnee.
 
 - **En mode Testing, le refresh token expire au bout de 7 jours.** C'est la
   contrainte structurante de tout le repo : tous les workflows Google tombent
-  au 8e jour. Pour en sortir, voir
-  [`docs/oauth-production.md`](../oauth-production.md) — decision du
-  2026-09-13 : on reste en Testing pour l'instant, la verification de domaine
-  etant bloquante.
+  au 8e jour. L'app reste en Testing, la verification de propriete du domaine
+  etant bloquante : motif et issues dans
+  [`docs/oauth-production.md`](../oauth-production.md).
 - **Aucun `--dry-run`** : le flux OAuth est interactif par nature.
 - **Le script n'ecrit que dans `.env`**, jamais dans les secrets GitHub : le
   `gh secret set` reste manuel.

@@ -1,9 +1,11 @@
 # Documentation des scripts
 
-Une page par script de [`scripts/`](../../scripts). Chacune suit le meme
+Index unique des scripts de [`scripts/`](../../scripts) : une page par
+script, chacune au meme
 canevas : role, declencheur, entrees, sorties (bases Notion et calendriers
 Google touches), idempotence et comportement en cas de rejeu, secrets requis,
-procedure de rollback, limites connues.
+procedure de rollback, limites connues. Les heures sont celles de Paris en ete ;
+crons UTC et reserves communes : [README](../../README.md#planification).
 
 **Ces pages ne documentent que le code de ce depot.** L'architecture des bases
 Notion, le parcours utilisateur et les modes operatoires des taches planifiees
@@ -34,7 +36,7 @@ une tache planifiee claude.ai, documentee sur Notion.
 
 | Doc | Script | Declencheur |
 |---|---|---|
-| [Reset des evenements recurrents](reset-recurring-events.md) | `reset-recurring-events.ts` | Actions, quotidien minuit |
+| [Reset des evenements recurrents](reset-recurring-events.md) | `reset-recurring-events.ts` | Actions, quotidien minuit UTC |
 | [Nettoyage de la base Docs](clean-docs.md) | `clean-docs.ts` | Actions, dimanche 5h |
 | [Archivage des phases](archive-phases.md) | `archive-phases.ts` | Actions, lundi 4h |
 
@@ -46,8 +48,8 @@ une tache planifiee claude.ai, documentee sur Notion.
 
 ## Ailleurs
 
-- [`docs/oauth-production.md`](../oauth-production.md) — runbook pour sortir
-  l'app OAuth du mode Testing. Une procedure, pas un script.
+- [`docs/oauth-production.md`](../oauth-production.md) — pourquoi l'app OAuth
+  reste en mode Testing, et ce qu'il faudrait pour en sortir. Pas un script.
 - [`README.md`](../../README.md) — prerequis communs, tableau de planification,
   variables d'environnement, pannes transverses.
 

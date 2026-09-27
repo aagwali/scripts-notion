@@ -26,8 +26,8 @@ relation**, `Phase archivée`, pointant vers la base archive.
 
 ## La base "Phases archivees"
 
-Deja creee (id dans `config/instance.json` → `notion.databases.phasesArchive`),
-sous la page `Databases`. Schema, pour reference et pour pouvoir la recreer :
+Id dans `config/instance.json` → `notion.databases.phasesArchive`, sous la
+page `Databases`. Schema attendu par le script, et de quoi la recreer :
 
 | Propriete | Type | Origine |
 |---|---|---|
@@ -86,7 +86,7 @@ l'etat incomplet, la liste des pages concernees et la commande de rollback,
 puis passe a la phase suivante. Le run suivant reprend le travail sans rien
 recreer.
 
-Ce script ecrit beaucoup plus que les deux scripts d'ingestion : throttle
+Ce script ecrit beaucoup plus que l'ingestion Gmail : throttle
 systematique a 350 ms et retry sur 429 / 5xx (4 tentatives, backoff
 exponentiel, `Retry-After` respecte). Sans cela, un lot de phases un peu gros
 part en echec au milieu d'une reattribution.
@@ -115,8 +115,8 @@ depuis la corbeille**, elle redevient `Done` et visible, et c'est
 
 **Tracabilite.** L'id relie une page archive a sa ligne de log et a la page en
 corbeille (`https://app.notion.com/p/<id sans tirets>`). Il distingue aussi
-formellement deux archives homonymes — le cas s'est deja produit avec deux
-phases « Mise en place ».
+formellement deux archives homonymes (deux phases « Mise en place », par
+exemple).
 
 **Duree de vie.** Notion conserve une page en corbeille **30 jours** avant
 suppression definitive. C'est la vraie fenetre de rollback, et elle porte sur
@@ -165,8 +165,7 @@ npx tsx scripts/archive-phases.ts             # pour de vrai
 
 Workflow : [`.github/workflows/archive-phases.yml`](../../.github/workflows/archive-phases.yml)
 
-- Declenchement hebdomadaire, le lundi a `02:00` UTC (4h a Paris en ete). Voir
-  les [reserves sur les crons](../../README.md#planification).
+- Cron : voir l'en-tete et les [reserves communes](../../README.md#planification).
 - Declenchement manuel :
   ```
   gh workflow run "Archive Phases (Notion)" --repo aagwali/scripts-notion
@@ -174,26 +173,17 @@ Workflow : [`.github/workflows/archive-phases.yml`](../../.github/workflows/arch
 
 ## Logs
 
-```
-gh run list --repo aagwali/scripts-notion --workflow "Archive Phases (Notion)" --limit 5
-gh run view <run-id> --repo aagwali/scripts-notion --log
-```
-
-Les runs GitHub Actions sont conserves 90 jours. Pour un lot important
-(premiere execution, reprise apres incident), lancer plutot le script en local
-et garder la sortie :
-
-```
-npx tsx scripts/archive-phases.ts | tee logs/archive-phases-$(date +%F).log
-```
+Workflow `Archive Phases (Notion)`, commandes dans le
+[README](../../README.md#consulter-les-logs). Le log est la trace de rollback
+(voir plus haut) ; pour un lot important, lancer en local et garder la sortie,
+comme l'indique le README.
 
 ## Limites connues
 
 - **Le corps de la page n'est pas copie.** Le script copie les *proprietes*
   d'une phase, pas la zone de saisie libre sous les proprietes. Sans
-  consequence dans l'usage actuel : les phases servent de point de
-  rattachement, les 14 phases existantes au moment de la mise en place
-  n'avaient aucun bloc de contenu. Si cet usage evolue, ces notes partiraient
+  consequence tant que les phases servent de point de rattachement, sans bloc
+  de contenu. Si cet usage evolue, ces notes partiraient
   a la corbeille avec l'original et disparaitraient a 30 jours — il faudra
   alors soit recopier les blocs, soit refuser d'archiver une phase dont le
   corps n'est pas vide.

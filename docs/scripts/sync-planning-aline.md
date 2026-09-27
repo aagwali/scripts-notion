@@ -171,18 +171,14 @@ present sur `main`.
 
 ## Logs
 
-```
-gh run list --repo aagwali/scripts-notion --workflow "Sync Planning Aline -> Google Calendar" --limit 5
-gh run view <run-id> --repo aagwali/scripts-notion --log
-```
-
+Workflow `Sync Planning Aline -> Google Calendar`, commandes dans le
+[README](../../README.md#consulter-les-logs), ou dans la
+[skill](../../.claude/skills/planning-aline/SKILL.md#5-declencher-le-sync).
 Chaque ligne du log porte la date, le jour de la semaine et le titre, pour
 relecture humaine — c'est la que se verifie qu'une photo a ete bien lue.
 
 ## Limites connues
 
-- **Jamais execute en reel a ce jour.** Toute la chaine est en place et
-  testable en `--dry-run`, mais aucun mois n'a encore ete importe.
 - **Deux rdv homonymes dans le meme mois se confondent** (voir les cles de
   tag). Le run le signale sans echouer.
 - **Un run par defaut ne corrige jamais rien.** C'est la propriete recherchee,
