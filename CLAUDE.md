@@ -46,6 +46,11 @@ Notion la rendrait inopérante : une skill ne se déclenche que depuis
 > se garde, il explique pourquoi la règle est ce qu'elle est ; un *historique* ne
 > s'écrit pas — il vit dans git et dans le Backlog.
 
+**Avant d'éditer une doc, ici ou sur Notion**, lire les règles complètes :
+[Règles de rédaction — Système Trace](https://app.notion.com/p/3e88b4b884658141a2d7f7b7c87b7587)
+(où écrire, bandeau de version, un fait à un seul endroit, modifier sans
+régression).
+
 ## Limitations qui touchent le code
 
 Les limites propres à Notion (formules, rollups, relations) sont décrites dans
