@@ -42,7 +42,8 @@ deduction se verifie :
   30 ou 31).
 - Chercher, **dans l'annee en cours**, le mois qui a cette longueur et
   dont le 1er tombe le bon jour de la semaine. Verifier avec
-  `date -j -f "%Y-%m-%d" "AAAA-MM-01" "+%A"`.
+  `python3 -c "import datetime; print(datetime.date(AAAA, MM, 1).strftime('%A'))"`
+  (portable macOS / Linux).
 - Les cases debordantes (fin du mois precedent en tete de grille) portent
   des numeros plus grands que le dernier jour du mois : elles confirment
   la deduction, et **ne sont pas reprises dans Notion** — elles
