@@ -51,8 +51,7 @@ francais, comme celles de `Target session`.
   trou silencieux que le gel de `Series` ferait ensuite passer pour une panne.
   Un `Monthday` vide, non entier ou hors de 1-31 sort en erreur : sans ce
   garde-fou, l'evenement disparaitrait de la vue sans que rien ne le signale.
-- `Sur demande` : jamais traite. C'est le cas de « Revue de code », declenchee
-  a la main.
+- `Sur demande` : jamais traite, la serie est declenchee a la main.
 - `En pause` : jamais traite, gele en l'etat. C'est le cas de « Rubix
   training ».
 - `Externe` : jamais traite, parce qu'un autre processus fait deja le reset de
