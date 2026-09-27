@@ -63,10 +63,9 @@ npx tsx scripts/roll-post-it.ts             # pour de vrai
 
 Workflow : [`.github/workflows/roll-post-it.yml`](../../.github/workflows/roll-post-it.yml)
 
-- Declenchement quotidien a `04:00` UTC, avant le reveil : les Post-it non
-  faits de la veille sont deja sur la journee quand on l'ouvre. Aucune
-  dependance avec un autre flux. Voir les
-  [reserves sur les crons](../../README.md#planification).
+- Cron avant le reveil (voir l'en-tete) : les Post-it non faits de la veille
+  sont deja sur la journee quand on l'ouvre. Aucune dependance avec un autre
+  flux. [Reserves communes](../../README.md#planification).
 - Declenchement manuel :
   ```
   gh workflow run "Report Post-it (Google Calendar)" --repo aagwali/scripts-notion

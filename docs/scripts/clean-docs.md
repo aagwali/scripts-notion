@@ -28,7 +28,7 @@ Un doc est retenu s'il remplit les **trois** conditions :
 | `Status` | `Reviewed` |
 | Age | strictement plus de 7 jours |
 
-Les huit autres types (`Tech spec`, `Reference`, `Procedure`,
+Les autres types (`Tech spec`, `Reference`, `Procedure`,
 `Meeting notes`...) ne sont jamais touches, quel que soit leur age, et un doc
 encore `To review` non plus — c'est le garde-fou qui evite de supprimer un
 journal jamais lu.
@@ -130,8 +130,7 @@ Le `--dry-run` affiche le perimetre doc par doc (garde / corbeille) puis
 
 Workflow : [`.github/workflows/clean-docs.yml`](../../.github/workflows/clean-docs.yml)
 
-- Declenchement hebdomadaire, le dimanche a `03:00` UTC (5h a Paris en ete).
-  Voir les [reserves sur les crons](../../README.md#planification).
+- Cron : voir l'en-tete et les [reserves communes](../../README.md#planification).
 - La cadence hebdomadaire et la retention de 7 jours sont independantes : un
   doc vit donc entre 7 et 14 jours selon le jour ou il est ne.
 - Declenchement manuel :
@@ -144,12 +143,9 @@ Workflow : [`.github/workflows/clean-docs.yml`](../../.github/workflows/clean-do
 
 La trace de reference est le **recapitulatif email**, pas le log : il arrive chaque
 dimanche dans la boite Gmail et n'expire pas. Le log du run reprend la meme
-information, plus le detail des docs gardes et leur age.
-
-```
-gh run list --repo aagwali/scripts-notion --workflow "Clean Docs (Notion)" --limit 5
-gh run view <run-id> --repo aagwali/scripts-notion --log
-```
+information, plus le detail des docs gardes et leur age. Workflow
+`Clean Docs (Notion)`, commandes dans le
+[README](../../README.md#consulter-les-logs).
 
 Le workflow sort en erreur si une mise a la corbeille echoue, ou si l'envoi du
 recapitulatif echoue — dans ce dernier cas le recapitulatif complet est dans le log.
@@ -158,7 +154,7 @@ recapitulatif echoue — dans ce dernier cas le recapitulatif complet est dans l
 
 - **Un doc `Log` ou `Input brief` jamais relu n'est jamais nettoye.** C'est
   le garde-fou voulu, mais il signifie qu'un oubli de validation fait grossir
-  la base indefiniment. Rien ne le signale aujourd'hui.
+  la base indefiniment. Rien ne le signale.
 - **Le nettoyage depend du `Type`**, qui est saisi par la tache aval. Un
   journal cree avec un autre `Type` echappe au nettoyage.
 - **Un rejeu envoie un email de plus** (voir plus haut).

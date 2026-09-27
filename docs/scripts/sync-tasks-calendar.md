@@ -111,19 +111,8 @@ l'id, precisement pour que ce trou soit refermable a la main.
 - Le log de chaque run nomme l'action, le jour et l'id pour chaque slot — c'est
   la trace de rollback.
 
-## Reprise de l'existant (Make)
-
-Les deux calendriers etaient alimentes par un scenario Make. Ce script reprend
-les evenements en place — il ne connait que leur id, deja stocke dans Notion —
-mais il les **renomme** au passage avec le prefixe `[Deadline]` / `[Reminder]`.
-
-Deux precautions :
-
-- **Couper le scenario Make** avant le premier run reel. Deux producteurs sur
-  les memes proprietes se marcheraient dessus.
-- La propriete `Google event Id (reminder)` a ete renommee
-  `Google Event Id (reminder)` (casse alignee sur celle de la deadline). Tout
-  scenario ou formule qui la designe par son ancien nom est a corriger.
+Ce script doit rester le seul producteur de ces evenements et de ces ids :
+deux producteurs sur les memes proprietes se marcheraient dessus.
 
 ## Lancement manuel
 
@@ -153,9 +142,8 @@ de bases Notion — ce ne sont pas des secrets.
 
 Workflow : [`.github/workflows/sync-tasks-calendar.yml`](../../.github/workflows/sync-tasks-calendar.yml)
 
-- Declenchement quotidien a `05:00` UTC (7h a Paris en ete). Voir les
-  [reserves sur les crons](../../README.md#planification). L'heure suit une
-  dependance : la tache planifiee d'ingestion (documentee sur Notion) passe a
+- Cron : voir l'en-tete et les [reserves communes](../../README.md#planification).
+  L'heure suit une dependance : la tache planifiee d'ingestion (documentee sur Notion) passe a
   `03:00` UTC et pose `Deadline` et `Reminder` sur les Tasks qu'elle cree.
   Deux heures plus tard, ses dates partent dans l'agenda le matin meme. La
   fenetre de 30h absorbe un run manque ou retarde.
@@ -166,10 +154,9 @@ Workflow : [`.github/workflows/sync-tasks-calendar.yml`](../../.github/workflows
 
 ## Logs
 
-```
-gh run list --repo aagwali/scripts-notion --workflow "Sync Tasks -> Google Calendar (Notion)" --limit 5
-gh run view <run-id> --repo aagwali/scripts-notion --log
-```
+Workflow `Sync Tasks -> Google Calendar (Notion)`, commandes dans le
+[README](../../README.md#consulter-les-logs). Le log est la trace de rollback
+(voir plus haut).
 
 ## Limites connues
 

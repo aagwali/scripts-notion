@@ -51,8 +51,7 @@ francais, comme celles de `Target session`.
   trou silencieux que le gel de `Series` ferait ensuite passer pour une panne.
   Un `Monthday` vide, non entier ou hors de 1-31 sort en erreur : sans ce
   garde-fou, l'evenement disparaitrait de la vue sans que rien ne le signale.
-- `Sur demande` : jamais traite. C'est le cas de « Revue de code », declenchee
-  a la main.
+- `Sur demande` : jamais traite, la serie est declenchee a la main.
 - `En pause` : jamais traite, gele en l'etat. C'est le cas de « Rubix
   training ».
 - `Externe` : jamais traite, parce qu'un autre processus fait deja le reset de
@@ -129,9 +128,10 @@ npx tsx scripts/reset-recurring-events.ts             # pour de vrai
 npm test                                              # tests de la logique
 ```
 
-C'est le seul script couvert par `npm test` : le seul dont le comportement
-depend d'un arbitrage de dates invisible a la relecture. Les 40 cas couvrent
-`decide()`, `previousOccurrence()`, `isMonthdayOn()`, `addDays()` et
+Avec [`roll-post-it`](roll-post-it.md), c'est l'un des deux scripts couverts
+par `npm test` : ceux dont le comportement depend d'un arbitrage de dates
+invisible a la relecture. Les cas couvrent `decide()`,
+`previousOccurrence()`, `isMonthdayOn()`, `addDays()` et
 `weekdayOf()`, y compris les changements d'heure et les annees bissextiles.
 Les tests ne font **aucun appel Notion**.
 
@@ -139,11 +139,10 @@ Les tests ne font **aucun appel Notion**.
 
 Workflow : [`.github/workflows/reset-recurring-events.yml`](../../.github/workflows/reset-recurring-events.yml)
 
-- Un cron quotidien, `0 0 * * *` UTC — soit 1h ou 2h a Paris selon l'heure
-  d'ete ou d'hiver. **Sans enjeu ici**, contrairement aux autres workflows :
-  seul le jour calendaire compte pour ce script, et il est calcule dans
-  `Europe/Paris`, pas dans le fuseau du runner (un runner GitHub est en UTC et
-  se tromperait d'un jour a minuit).
+- Un cron quotidien, `0 0 * * *` UTC — 1h ou 2h a Paris selon la saison,
+  **sans enjeu ici** : seul le jour calendaire compte, et il est calcule dans
+  `Europe/Paris`, pas dans le fuseau du runner (en UTC, il se tromperait d'un
+  jour a minuit). Autres [reserves communes](../../README.md#planification).
 - Groupe `concurrency: reset-recurring-events`, sans `cancel-in-progress` :
   empeche un cron et un lancement manuel de se chevaucher.
 - Declenchement manuel :
@@ -154,12 +153,9 @@ Workflow : [`.github/workflows/reset-recurring-events.yml`](../../.github/workfl
 ## Logs
 
 Le log donne, pour chaque evenement, le verdict retenu et sa raison — c'est la
-ou lire pourquoi une serie est repartie de zero ou a ete gelee.
-
-```
-gh run list --repo aagwali/scripts-notion --workflow "Reset Recurring Events (Notion)" --limit 5
-gh run view <run-id> --repo aagwali/scripts-notion --log
-```
+ou lire pourquoi une serie est repartie de zero ou a ete gelee. Workflow
+`Reset Recurring Events (Notion)`, commandes dans le
+[README](../../README.md#consulter-les-logs).
 
 Le workflow sort en erreur si un evenement n'a pas de `Recurrence`, ou si une
 ecriture Notion echoue.

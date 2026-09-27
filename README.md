@@ -1,50 +1,13 @@
 # scripts-notion
 
 Scripts d'automatisation autour d'un meme espace Notion, partageant une
-seule integration (`NOTION_TOKEN`) et un seul jeu de dependances.
+seule integration (`NOTION_TOKEN`) et un seul jeu de dependances : ingestion
+Gmail, projections vers Google Calendar, entretien des bases.
 
-**Ingestion.** Un script alimente la base "Raw inputs" depuis Gmail
-(API). Chaque page Notion cree porte `Status: "To process"`, consomme
-ensuite par une tache aval (non incluse ici). La base recoit aussi des
-captures ecrites hors depot.
-
-**Entretien des bases.** Trois autres scripts, sans rapport avec les
-emails, sortent les phases terminees de la base "Phases", remettent a
-zero chaque nuit la base "Recurring events", et mettent a la corbeille
-chaque dimanche les journaux de run et input briefs relus de la base "Docs".
-
-**Projection vers Google Calendar.** Un script reporte les dates
-`Deadline` et `Reminder` de la base "Tasks" dans deux calendriers Google
-dedies, et retire de l'agenda ce qui a disparu de Notion ou dont la tache est
-close.
-
-**Report Post-it.** Un script ramene chaque matin sur la journee les
-evenements du calendrier Google "Post-it" restes dans le passe : une action
-eclair non faite revient jusqu'a ce qu'on la supprime.
-
-**Planning d'Aline.** Un dernier script projette vers Google Calendar les
-jours travailles de la base "Planning Aline", elle-meme alimentee par une
-tache Claude qui lit la photo d'un tableau blanc.
-
-## Les sept flux
-
-Chaque flux a sa page : fonctionnement, choix de conception, lancement,
-planification, logs et pannes propres.
-
-| Flux | Ce qu'il fait | Declencheur |
-|---|---|---|
-| [Gmail -> Notion](docs/scripts/import-gmail.md) | ingestion des emails Gmail | GitHub Actions, quotidien |
-| [Archivage des phases](docs/scripts/archive-phases.md) | sort les phases terminees de "Phases" | GitHub Actions, hebdomadaire |
-| [Reset des evenements recurrents](docs/scripts/reset-recurring-events.md) | reamorce "Recurring events" chaque nuit | GitHub Actions, quotidien |
-| [Tasks -> Google Calendar](docs/scripts/sync-tasks-calendar.md) | projette `Deadline` / `Reminder` | GitHub Actions, quotidien |
-| [Planning d'Aline](docs/scripts/sync-planning-aline.md) | projette les jours travailles | a la demande |
-| [Report Post-it](docs/scripts/roll-post-it.md) | ramene sur aujourd'hui les Post-it non faits | GitHub Actions, quotidien |
-| [Nettoyage de la base Docs](docs/scripts/clean-docs.md) | corbeille les logs et input briefs relus | GitHub Actions, hebdomadaire |
-
-Index complet et canevas commun : [`docs/scripts/README.md`](docs/scripts/README.md).
-
-Hors flux : [l'autorisation OAuth Google](docs/scripts/google-auth.md), a lancer
-une fois, et [sortir l'app OAuth du mode Testing](docs/oauth-production.md).
+**Index des scripts** : [`docs/scripts/README.md`](docs/scripts/README.md), une
+page par script (fonctionnement, rejeu, rollback, pannes propres). Cette page-ci
+ne porte que ce qui leur est commun : prerequis, planification, variables,
+logs et pannes transverses.
 
 Le systeme Notion que ces scripts alimentent n'est pas documente ici : voir
 [`CLAUDE.md`](CLAUDE.md) pour le point d'entree et la regle de frontiere.
@@ -69,8 +32,8 @@ scripts/
   check-hardcoded-ids.ts          # CI : aucun id hors de config/
 docs/
   scripts/                        # une page par script, plus leur index
-  oauth-production.md             # runbook : sortir l'app OAuth du mode Testing
-CLAUDE.md                         # identite du systeme, frontiere depot / Notion
+  oauth-production.md             # app OAuth en mode Testing : motif, issues, pieges
+CLAUDE.md                         # frontiere depot / Notion, regles de session
 .claude/skills/
   planning-aline/SKILL.md         # la tache Claude qui lit la photo du tableau
 .github/workflows/                # un workflow par flux
@@ -78,19 +41,20 @@ CLAUDE.md                         # identite du systeme, frontiere depot / Notio
 
 ## Planification
 
-Tout tourne entre le soir et le matin, dans cet ordre (heures de Paris) :
+Tout tourne entre le soir et le matin, dans cet ordre (heures de Paris en
+ete, sauf `reset-recurring-events`, cale sur minuit UTC) :
 
 | Heure | Script | Declencheur | Cron |
 |---|---|---|---|
 | 22h | `import-gmail` | GitHub Actions | `0 20 * * *` UTC |
-| 2h | `reset-recurring-events` | GitHub Actions | `0 0 * * *` UTC |
+| minuit UTC | `reset-recurring-events` | GitHub Actions | `0 0 * * *` UTC |
 | lundi 4h | `archive-phases` | GitHub Actions | `0 2 * * 1` UTC |
 | dimanche 5h | `clean-docs` | GitHub Actions | `0 3 * * 0` UTC |
 | 6h | `roll-post-it` | GitHub Actions | `0 4 * * *` UTC |
 | 7h | `sync-tasks-calendar` | GitHub Actions | `0 5 * * *` UTC |
 
 Trois reserves valent pour **tous** les workflows GitHub, et ne sont pas
-repetees dans les pages de flux :
+repetees dans les pages de script :
 
 - **Les heures sont ecrites en UTC et ne suivent pas le changement
   d'heure.** Celles du tableau valent pour l'ete (CEST), tout glisse d'une
@@ -129,7 +93,7 @@ raccourcis `npm run` (`import:gmail`, `archive-phases`, `clean-docs`,
 - Node >= 18 (fetch natif)
 - `npm install`
 - Une integration Notion partagee avec les bases utilisees. Chaque page de
-  flux nomme les siennes ; l'ensemble couvre "Raw inputs", "Phases", "Phases
+  script nomme les siennes ; l'ensemble couvre "Raw inputs", "Phases", "Phases
   archivees", "Tasks", "Docs", "Projects", "Sponsors", "Recurring events" et
   "Planning Aline". Leurs ids vivent dans
   [`config/instance.json`](config/instance.json).
@@ -158,7 +122,7 @@ recapitulatif de `clean-docs` part avec le meme `gmail.modify`, qui couvre
    Ouvre le navigateur, demande le consentement, ecrit
    `GOOGLE_REFRESH_TOKEN` dans `.env` automatiquement.
    > En mode Testing, ce refresh token expire au bout de **7 jours**.
-   > Pour en sortir une bonne fois : [`docs/oauth-production.md`](docs/oauth-production.md).
+   > Pourquoi l'app y reste : [`docs/oauth-production.md`](docs/oauth-production.md).
 4. Repousser le secret si les scripts sont planifies :
    ```
    gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/scripts-notion --body "..."
@@ -180,7 +144,14 @@ Fichier `.env` local (jamais commite, voir `.gitignore`) :
 | `GOOGLE_REFRESH_TOKEN` | Gmail, Calendar, Docs | Genere une fois via `scripts/google-auth.ts`, porte les deux scopes |
 
 Les memes quatre variables sont posees en secrets du repo
-(`Settings > Secrets and variables > Actions`) pour les workflows.
+(`Settings > Secrets and variables > Actions`) pour les workflows :
+
+```
+gh secret set NOTION_TOKEN --repo aagwali/scripts-notion --body "..."
+gh secret set GOOGLE_CLIENT_ID --repo aagwali/scripts-notion --body "..."
+gh secret set GOOGLE_CLIENT_SECRET --repo aagwali/scripts-notion --body "..."
+gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/scripts-notion --body "..."
+```
 
 Les ids de bases Notion et de calendriers Google vivent dans
 [`config/instance.json`](config/instance.json), versionne — ce ne sont pas des
@@ -188,8 +159,8 @@ secrets.
 
 ## Consulter les logs
 
-Chaque page de flux indique ou lire sa trace. Deux points valent pour tous
-les workflows GitHub :
+Chaque page de script donne le nom de son workflow et ce que dit son log.
+Deux points valent pour tous les workflows GitHub :
 
 - Interface web : [Actions du repo](https://github.com/aagwali/scripts-notion/actions)
   — ouvrir le run, chaque step est depliable avec ses logs complets.
@@ -209,7 +180,7 @@ npx tsx scripts/archive-phases.ts | tee logs/archive-phases-$(date +%F).log
 
 ## Depannage
 
-Pannes transverses. Les pannes propres a un flux sont sur sa page :
+Pannes transverses. Les pannes propres a un script sont sur sa page :
 [archivage](docs/scripts/archive-phases.md#depannage) (proprietes, `INCOMPLET`),
 [Tasks Calendar](docs/scripts/sync-tasks-calendar.md#limites-connues) (scope Calendar),
 [OAuth Google](docs/scripts/google-auth.md#depannage) (token, scopes).
@@ -219,7 +190,7 @@ Pannes transverses. Les pannes propres a un flux sont sur sa page :
   faut `GOOGLE_CLIENT_ID=xxx`.
 - **Rafraichissement Google refuse** : si l'app OAuth est en mode
   Testing, le refresh token expire au bout de 7 jours — relancer
-  `npx tsx scripts/google-auth.ts`. Pour en sortir une bonne fois, voir
+  `npx tsx scripts/google-auth.ts` et repousser le secret. Voir
   [`docs/oauth-production.md`](docs/oauth-production.md).
 - **`Notion API 404` sur une base** : l'integration n'a pas acces a la
   base. Un 404 Notion signifie "invisible pour ce token", pas

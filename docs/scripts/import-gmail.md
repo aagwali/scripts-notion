@@ -57,7 +57,7 @@ importe releve de l'incident, pas du fonctionnement nominal.
 ecrits et les deux servent. `Message ID` est l'identifiant RFC 5322 et sert de
 cle de deduplication a ce script. `Gmail message ID` est l'id interne attendu
 par les outils Gmail : c'est la voie nominale de la tache aval (§3.1 du Run
-quotidien email) pour muter le message. Sans lui, cette tache retombe sur un
+quotidien ingestion) pour muter le message. Sans lui, cette tache retombe sur un
 `search_threads rfc822msgid:` — un appel Gmail de plus par item.
 
 Les valeurs texte sont decoupees en objets `rich_text` de 2000 caracteres,
@@ -118,36 +118,18 @@ Ce script n'a **pas** de `--dry-run`.
 
 Workflow : [`.github/workflows/import-gmail.yml`](../../.github/workflows/import-gmail.yml)
 
-- Declenchement quotidien a `20:00` UTC (22h a Paris en ete). Voir les
-  [reserves sur les crons](../../README.md#planification) : UTC fige et runs
-  potentiellement retardes.
-- C'est ce workflow qui a pose les quatre secrets en premier, les autres les
-  reutilisent :
-  ```
-  gh secret set NOTION_TOKEN --repo aagwali/scripts-notion --body "..."
-  gh secret set GOOGLE_CLIENT_ID --repo aagwali/scripts-notion --body "..."
-  gh secret set GOOGLE_CLIENT_SECRET --repo aagwali/scripts-notion --body "..."
-  gh secret set GOOGLE_REFRESH_TOKEN --repo aagwali/scripts-notion --body "..."
-  ```
-- Le cron GitHub Actions ne se declenche que sur la **branche par defaut**
-  (`main`) — pusher ailleurs ne suffit pas.
+- Cron : voir l'en-tete et les [reserves communes](../../README.md#planification).
+- Les quatre secrets sont ceux du repo, communs a tous les workflows
+  ([Variables d'environnement](../../README.md#variables-denvironnement)).
 - Declenchement manuel :
   ```
   gh workflow run "Import Gmail (Notion)" --repo aagwali/scripts-notion
-  gh run list --repo aagwali/scripts-notion --limit 1
   ```
 
 ## Logs
 
-- Interface web : [Actions du repo](https://github.com/aagwali/scripts-notion/actions)
-  — ouvrir le run du jour, chaque step est depliable avec ses logs complets.
-- En CLI :
-  ```
-  gh run list --repo aagwali/scripts-notion --limit 5
-  gh run view <run-id> --repo aagwali/scripts-notion --log
-  ```
-- Un seul run attendu chaque nuit, autour de `20:00` UTC — l'heure reelle de
-  declenchement peut varier.
+Workflow `Import Gmail (Notion)`, commandes dans le
+[README](../../README.md#consulter-les-logs). Un seul run attendu par nuit.
 
 ## Limites connues
 
