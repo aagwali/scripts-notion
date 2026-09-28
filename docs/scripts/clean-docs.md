@@ -50,9 +50,6 @@ Le filtre Notion ne porte que sur `Type` et `Status` ; l'age est arbitre cote
 script. Le lot est de l'ordre de la dizaine de pages, la lecture large ne
 coute rien.
 
-La vue « Généré à supprimer » de la base Docs reprend exactement ce
-perimetre, age excepte.
-
 ## L'age se lit sur `created_time`, pas sur `Date`
 
 L'age ne sert qu'a la regle « retention ».
