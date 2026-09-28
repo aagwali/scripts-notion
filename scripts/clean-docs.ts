@@ -1,14 +1,18 @@
 #!/usr/bin/env -S npx tsx
 /**
- * Nettoyage de la base Notion "Docs" : mise a la corbeille des journaux de run
- * et des input briefs relus, puis envoi d'un recapitulatif par email.
+ * Nettoyage de la base Notion "Docs" : mise a la corbeille des docs ecartes a
+ * la relecture et des journaux de run et input briefs relus, puis envoi d'un
+ * recapitulatif par email.
  *
- * Perimetre : Type = "Log" ou "Input brief", Status = "Reviewed", plus vieux
- * que 7 jours. Ces deux types sont produits chaque jour par une tache aval ;
- * une fois relus ils n'ont plus de lecteur, et leur accumulation noie les
- * vrais documents de la base dans les vues et les selecteurs. Les autres types
- * (Tech spec, Reference, Procedure...) ne sont jamais touches, quel que soit
- * leur age.
+ * Deux regles, independantes :
+ * - Status = "Dismissed" : corbeille au premier run, quels que soient le Type
+ *   et l'age. Le statut est un verdict de relecture — le doc n'a plus de
+ *   valeur, typiquement le miroir d'un email deja conserve dans Gmail.
+ * - Type = "Log" ou "Input brief", Status = "Reviewed", plus vieux que 7
+ *   jours. Ces deux types sont produits chaque jour par une tache aval ; une
+ *   fois relus ils n'ont plus de lecteur, et leur accumulation noie les vrais
+ *   documents de la base dans les vues et les selecteurs. Un doc "Reviewed"
+ *   d'un autre Type n'est jamais touche, quel que soit son age.
  *
  * La suppression est une mise a la corbeille Notion, pas un effacement :
  * Notion conserve 30 jours, ce qui est la vraie fenetre de rollback. Le
@@ -46,11 +50,14 @@ const GMAIL_API = "https://gmail.googleapis.com/gmail/v1/users/me";
 const TYPE_PROP = "Type";
 const STATUS_PROP = "Status";
 
-/** Seuls ces docs sont nettoyes. Tout autre Type ou Status est hors perimetre. */
+/** Regle "ecarte" : ce statut suffit, sans condition de Type ni d'age. */
+const DISMISSED_STATUS = "Dismissed";
+
+/** Regle "retention" : ces Types, a ce statut, au-dela de RETENTION_DAYS. */
 const CLEANED_TYPES = ["Log", "Input brief"];
 const CLEANED_STATUS = "Reviewed";
 
-/** Age minimum, en jours, pour qu'un doc soit retenu. Strictement superieur. */
+/** Age minimum, en jours, pour la regle "retention". Strictement superieur. */
 const RETENTION_DAYS = 7;
 
 /** Fuseau qui definit "aujourd'hui", independamment de celui du runner. */
@@ -258,10 +265,19 @@ async function sendRecap(subject: string, body: string): Promise<void> {
 
 // --- Nettoyage ------------------------------------------------------------
 
+/** Regle qui a retenu le doc, rappelee dans le recapitulatif. */
+type Rule = "dismissed" | "retention";
+
+const RULE_LABELS: Record<Rule, string> = {
+  dismissed: `Status = ${DISMISSED_STATUS}`,
+  retention: `${CLEANED_TYPES.join(" / ")} ${CLEANED_STATUS}, plus de ${RETENTION_DAYS} jours`,
+};
+
 interface Candidate {
   page: NotionPage;
   name: string;
   type: string;
+  rule: Rule;
   /** Jour de creation de la page, dans TIMEZONE. */
   day: string;
   age: number;
@@ -284,7 +300,9 @@ function formatRecap(results: Result[], today: string): { subject: string; body:
   const lines = [
     `Nettoyage de la base Notion "Docs" du ${today}.`,
     "",
-    `Perimetre : Type = ${CLEANED_TYPES.join(" ou ")}, Status = ${CLEANED_STATUS}, ` +
+    "Perimetre :",
+    `- Status = ${DISMISSED_STATUS}, tout Type, tout age ;`,
+    `- Type = ${CLEANED_TYPES.join(" ou ")}, Status = ${CLEANED_STATUS}, ` +
     `plus de ${RETENTION_DAYS} jours.`,
     "",
   ];
@@ -295,13 +313,18 @@ function formatRecap(results: Result[], today: string): { subject: string; body:
 
   if (trashed.length > 0) {
     lines.push(`${trashed.length} doc(s) mis a la corbeille :`, "");
-    for (const r of trashed) {
-      lines.push(
-        `- [${r.type}] ${r.name}`,
-        `  cree le ${r.day} (${r.age} j)`,
-        `  ${notionUrl(r.page.id)}`,
-        "",
-      );
+    for (const rule of Object.keys(RULE_LABELS) as Rule[]) {
+      const group = trashed.filter((r) => r.rule === rule);
+      if (group.length === 0) continue;
+      lines.push(`${RULE_LABELS[rule]} (${group.length}) :`, "");
+      for (const r of group) {
+        lines.push(
+          `- [${r.type}] ${r.name}`,
+          `  cree le ${r.day} (${r.age} j)`,
+          `  ${notionUrl(r.page.id)}`,
+          "",
+        );
+      }
     }
     lines.push(
       "Restauration possible pendant 30 jours depuis la corbeille Notion,",
@@ -313,7 +336,12 @@ function formatRecap(results: Result[], today: string): { subject: string; body:
   if (failed.length > 0) {
     lines.push(`${failed.length} doc(s) en echec, toujours en place :`, "");
     for (const r of failed) {
-      lines.push(`- ${r.name}`, `  ${notionUrl(r.page.id)}`, `  ${r.error}`, "");
+      lines.push(
+        `- [${RULE_LABELS[r.rule]}] ${r.name}`,
+        `  ${notionUrl(r.page.id)}`,
+        `  ${r.error}`,
+        "",
+      );
     }
   }
 
@@ -342,43 +370,58 @@ async function main(): Promise<void> {
 
   /**
    * Le filtre Notion ne porte que sur Type et Status : l'age est arbitre ici,
-   * parce qu'il peut reposer sur "Date" ou sur created_time selon le doc. Le
-   * lot est de l'ordre de la dizaine de pages, la lecture large ne coute rien.
+   * sur created_time. Le lot est de l'ordre de la dizaine de pages, la lecture
+   * large ne coute rien. Un "and" par Type plutot qu'un "or" de Types imbrique :
+   * l'API refuse plus de deux niveaux de filtres composes.
    */
   const docs = await queryAll(DOCS_DATABASE_ID, {
-    and: [
-      { or: CLEANED_TYPES.map((name) => ({ property: TYPE_PROP, select: { equals: name } })) },
-      { property: STATUS_PROP, select: { equals: CLEANED_STATUS } },
+    or: [
+      { property: STATUS_PROP, select: { equals: DISMISSED_STATUS } },
+      ...CLEANED_TYPES.map((name) => ({
+        and: [
+          { property: TYPE_PROP, select: { equals: name } },
+          { property: STATUS_PROP, select: { equals: CLEANED_STATUS } },
+        ],
+      })),
     ],
   });
 
   const candidates: Candidate[] = [];
+  let kept = 0;
 
   for (const page of docs) {
     const day = creationDay(page);
     const age = daysBetween(day, today);
     const name = titleOf(page) || "(sans nom)";
     const type = page.properties[TYPE_PROP]?.select?.name ?? "(sans type)";
+    const status = page.properties[STATUS_PROP]?.select?.name;
 
-    if (age > RETENTION_DAYS) {
-      candidates.push({ page, name, type, day, age });
+    if (status === DISMISSED_STATUS) {
+      candidates.push({ page, name, type, rule: "dismissed", day, age });
+    } else if (age > RETENTION_DAYS) {
+      candidates.push({ page, name, type, rule: "retention", day, age });
     } else {
+      kept++;
       console.log(`  garde ${day} (${age} j) [${type}] "${name}"`);
     }
   }
 
+  const dismissed = candidates.filter((c) => c.rule === "dismissed").length;
   console.log(
-    `\n${docs.length} doc(s) ${CLEANED_TYPES.join(" / ")} au statut ${CLEANED_STATUS}, ` +
-    `${candidates.length} au-dela de ${RETENTION_DAYS} jours.\n`,
+    `\n${dismissed} doc(s) ${DISMISSED_STATUS}, ` +
+    `${candidates.length - dismissed} doc(s) ${CLEANED_TYPES.join(" / ")} ${CLEANED_STATUS} ` +
+    `au-dela de ${RETENTION_DAYS} jours, ${kept} garde(s).\n`,
   );
 
   const results: Result[] = [];
 
   for (const candidate of candidates) {
-    const { page, name, type, day, age } = candidate;
+    const { page, name, type, rule, day, age } = candidate;
 
     if (DRY_RUN) {
-      console.log(`  [dry-run] ${day} (${age} j) [${type}] "${name}" ${page.id} -> corbeille`);
+      console.log(
+        `  [dry-run] ${day} (${age} j) [${type}] "${name}" ${page.id} -> corbeille (${rule})`,
+      );
       // Compte comme un succes pour que l'apercu du recapitulatif, plus bas, montre
       // exactement ce qui serait envoye.
       results.push({ ...candidate, trashed: true });
@@ -390,7 +433,7 @@ async function main(): Promise<void> {
         method: "PATCH",
         body: JSON.stringify({ archived: true }),
       });
-      console.log(`  corbeille ${day} (${age} j) [${type}] "${name}" ${page.id}`);
+      console.log(`  corbeille ${day} (${age} j) [${type}] "${name}" ${page.id} (${rule})`);
       results.push({ ...candidate, trashed: true });
     } catch (err) {
       const error = (err as Error).message;
