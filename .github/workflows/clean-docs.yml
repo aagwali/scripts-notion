@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Nettoyage des Docs relus
+      - name: Nettoyage des Docs ecartes et relus
         run: npx tsx scripts/clean-docs.ts ${{ inputs.dry_run && '--dry-run' || '' }}
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}

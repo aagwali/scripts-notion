@@ -11,7 +11,14 @@
 
 ## Le probleme
 
-Une tache aval depose chaque jour deux pages dans la base "Docs" : un journal
+Deux sortes de pages s'accumulent dans la base "Docs" sans plus servir.
+
+Les docs **ecartes a la relecture** : typiquement le miroir d'un email que
+l'ingestion a transforme en doc, alors que l'email lui-meme est conserve dans
+Gmail. Le doc n'a eu valeur que de notification ; la relecture le passe en
+`Status = Dismissed` au lieu de `Reviewed`.
+
+Les **produits quotidiens relus** : une tache aval depose chaque jour deux pages dans la base "Docs" : un journal
 de run (`Type = Log`) et un input brief (`Type = Input brief`). Relus le
 lendemain, ils n'ont plus de lecteur, mais ils continuent de s'empiler —
 environ 60 pages par mois, qui noient les vrais documents de la base (specs,
@@ -20,7 +27,13 @@ procedures, references) dans les vues et dans le selecteur de la relation
 
 ## Perimetre
 
-Un doc est retenu s'il remplit les **trois** conditions :
+Un doc est retenu par l'une ou l'autre de deux regles independantes.
+
+**Regle « ecarte »** : `Status = Dismissed`. Aucune autre condition — ni
+`Type`, ni age. Le statut est un verdict pose a la main a la relecture : il
+n'y a rien a attendre, la corbeille Notion (30 jours) sert de filet.
+
+**Regle « retention »** : les **trois** conditions a la fois.
 
 | Condition | Valeur |
 |---|---|
@@ -28,8 +41,8 @@ Un doc est retenu s'il remplit les **trois** conditions :
 | `Status` | `Reviewed` |
 | Age | strictement plus de 7 jours |
 
-Les autres types (`Tech spec`, `Reference`, `Procedure`,
-`Meeting notes`...) ne sont jamais touches, quel que soit leur age, et un doc
+Un doc `Reviewed` d'un autre type (`Tech spec`, `Reference`, `Procedure`,
+`Meeting notes`...) n'est jamais touche, quel que soit son age, et un doc
 encore `To review` non plus — c'est le garde-fou qui evite de supprimer un
 journal jamais lu.
 
@@ -38,6 +51,8 @@ script. Le lot est de l'ordre de la dizaine de pages, la lecture large ne
 coute rien.
 
 ## L'age se lit sur `created_time`, pas sur `Date`
+
+L'age ne sert qu'a la regle « retention ».
 
 La base porte pourtant une propriete `Date`. Elle n'est pas utilisee, pour
 trois raisons :
@@ -67,7 +82,8 @@ recapitulatif liste les liens `https://app.notion.com/p/<id>`, qui restent valab
 une fois la page en corbeille.
 
 Rien n'est recopie ailleurs : contrairement aux phases, ces pages n'ont pas de
-relation entrante a preserver, et leur contenu est par nature perissable.
+relation entrante a preserver, et leur contenu est par nature perissable ou,
+pour un doc `Dismissed`, juge sans valeur a la relecture.
 Passe 30 jours il n'y a plus rien a restaurer — c'est le but.
 
 ## Le recapitulatif
@@ -80,6 +96,9 @@ Il est envoye **meme quand rien n'a ete nettoye**. Recevoir « 0 doc » chaque
 dimanche dit que le job a tourne ; un silence ne le dit pas, et ne se
 distingue pas d'un workflow casse. C'est aussi la trace durable du nettoyage :
 les logs GitHub Actions, eux, expirent a 90 jours.
+
+Le corps regroupe les docs mis a la corbeille par regle (« ecarte » puis
+« retention ») ; un echec rappelle la regle qui avait retenu le doc.
 
 Le sujet est volontairement en ASCII — `[Docs cleaning] N doc(s) en
 corbeille`, suffixe de `, M echec(s)` si une mise a la corbeille a rate — ce
@@ -132,7 +151,9 @@ Workflow : [`.github/workflows/clean-docs.yml`](../../.github/workflows/clean-do
 
 - Cron : voir l'en-tete et les [reserves communes](../../README.md#planification).
 - La cadence hebdomadaire et la retention de 7 jours sont independantes : un
-  doc vit donc entre 7 et 14 jours selon le jour ou il est ne.
+  doc `Log` ou `Input brief` relu vit donc entre 7 et 14 jours selon le jour
+  ou il est ne. Un doc `Dismissed` part au dimanche suivant, soit au plus 7
+  jours apres son passage au statut.
 - Declenchement manuel :
   ```
   gh workflow run "Clean Docs (Notion)" --repo aagwali/scripts-notion
@@ -155,8 +176,13 @@ recapitulatif echoue — dans ce dernier cas le recapitulatif complet est dans l
 - **Un doc `Log` ou `Input brief` jamais relu n'est jamais nettoye.** C'est
   le garde-fou voulu, mais il signifie qu'un oubli de validation fait grossir
   la base indefiniment. Rien ne le signale.
-- **Le nettoyage depend du `Type`**, qui est saisi par la tache aval. Un
-  journal cree avec un autre `Type` echappe au nettoyage.
+- **La regle « retention » depend du `Type`**, qui est saisi par la tache
+  aval. Un journal cree avec un autre `Type` y echappe.
+- **`Dismissed` ne connait aucune exception de `Type`.** Un doc de
+  reference passe a ce statut par erreur part a la corbeille au run suivant ;
+  seule la corbeille Notion permet de le recuperer.
+- **Le nom de l'option est une cle d'API.** Renommer `Dismissed` dans Notion
+  desactive la regle en silence : le filtre ne remonte plus rien.
 - **Un rejeu envoie un email de plus** (voir plus haut).
 - **La retention est codee en dur** (`RETENTION_DAYS = 7`), non parametrable
   par le workflow.
